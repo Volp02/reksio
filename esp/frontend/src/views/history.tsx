@@ -1,0 +1,276 @@
+import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
+import { api, ResponseParseError } from "../api";
+import backSvg from "../assets/icons/back.svg?raw";
+import { ConfirmDialog } from "../components/confirm-dialog";
+import { ErrorBannerStack, useErrorStack } from "../components/error-banner";
+import { Icon } from "../components/icon";
+import { useNavigate, usePath } from "../components/router";
+import { usePoll } from "../hooks/use-poll";
+import { T, useI18n } from "../i18n";
+import type { DistanceUnit } from "../distance-units";
+import type { HistoryFileInfo, MapData } from "../types";
+import { normalizeError } from "../utils";
+import { HistoryItemView } from "./history/item";
+import { HistoryListView } from "./history/list";
+
+const RECOVERY_GUIDE_URL =
+    "https://github.com/renjfk/OpenNeato/blob/main/docs/user-guide.md#recovering-corrupted-cleaning-history";
+
+interface HistoryViewProps {
+    distanceUnit: DistanceUnit;
+}
+
+export function HistoryView({ distanceUnit }: HistoryViewProps) {
+    const { t } = useI18n();
+    const navigate = useNavigate();
+    const path = usePath();
+    const [errors, errorStack] = useErrorStack();
+    const [files, setFiles] = useState<HistoryFileInfo[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedMap, setSelectedMap] = useState<MapData | null>(null);
+    const [mapEmpty, setMapEmpty] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    // Set when the list response is unparseable (e.g. one session's metadata
+    // contains malformed JSON that breaks the surrounding response). Triggers
+    // the recovery panel instead of the normal list view.
+    const [listCorrupted, setListCorrupted] = useState(false);
+    const [confirmReset, setConfirmReset] = useState(false);
+
+    // Derive selected filename from URL: /history = list, /history/<name> = detail
+    const selectedName = path.startsWith("/history/") ? decodeURIComponent(path.slice(9)) : null;
+    const selectedFile = useMemo(
+        () => (selectedName ? (files.find((f) => f.name === selectedName) ?? null) : null),
+        [selectedName, files],
+    );
+    const selectedRecording = selectedFile?.recording === true;
+    const hasRecording = files.some((f) => f.recording);
+
+    // Sort sessions by date descending (newest first)
+    const sortByDateDesc = (list: HistoryFileInfo[]) =>
+        list.sort((a, b) => (b.session?.time ?? 0) - (a.session?.time ?? 0));
+
+    // Load file list only (no full session data)
+    useEffect(() => {
+        setLoading(true);
+        setListCorrupted(false);
+        api.getHistoryList()
+            .then((fileList) => setFiles(sortByDateDesc(fileList)))
+            .catch((e: unknown) => {
+                if (e instanceof ResponseParseError) {
+                    setListCorrupted(true);
+                } else {
+                    errorStack.push(normalizeError(e, "Failed to load map data"));
+                }
+            })
+            .finally(() => setLoading(false));
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Poll list + active recording session map (every 5s while recording)
+    usePoll(
+        async () => {
+            const fileList = await api.getHistoryList();
+            setFiles(sortByDateDesc(fileList));
+
+            if (selectedName) {
+                const file = fileList.find((f) => f.name === selectedName);
+                if (file?.recording) {
+                    const maps = await api.getHistorySession(file.name);
+                    if (maps.length > 0) setSelectedMap(maps[0]);
+                }
+            }
+        },
+        5000,
+        hasRecording,
+    );
+
+    // Fetch full session data when URL points to a file
+    useEffect(() => {
+        if (!selectedName) {
+            setSelectedMap(null);
+            setMapEmpty(false);
+            return;
+        }
+        setSelectedMap(null);
+        setMapEmpty(false);
+        const isRecording = files.find((f) => f.name === selectedName)?.recording === true;
+        api.getHistorySession(selectedName)
+            .then((maps) => {
+                if (maps.length > 0) {
+                    setSelectedMap(maps[0]);
+                } else if (!isRecording) {
+                    setMapEmpty(true);
+                }
+            })
+            .catch((e: unknown) => {
+                errorStack.push(normalizeError(e, "Failed to load session"));
+            });
+    }, [selectedName, errorStack]);
+
+    const handleSelect = useCallback(
+        (idx: number) => {
+            const file = files[idx];
+            if (!file) return;
+            navigate(`/history/${file.name}`);
+        },
+        [files, navigate],
+    );
+
+    const handleBack = useCallback(() => {
+        if (selectedName) {
+            navigate("/history");
+            errorStack.clear();
+        } else {
+            navigate("/");
+        }
+    }, [selectedName, navigate, errorStack]);
+
+    const handleDeleteSession = useCallback(
+        (idx: number) => {
+            const file = files[idx];
+            if (!file) return;
+            setDeleting(true);
+            api.deleteHistorySession(file.name)
+                .then(() => api.getHistoryList())
+                .then((fileList) => {
+                    setFiles(sortByDateDesc(fileList));
+                    if (selectedName === file.name) navigate("/history");
+                })
+                .catch((e: unknown) => {
+                    errorStack.push(normalizeError(e, "Failed to delete"));
+                })
+                .finally(() => setDeleting(false));
+        },
+        [files, selectedName, navigate, errorStack],
+    );
+
+    const handleDeleteAll = useCallback(() => {
+        setDeleting(true);
+        api.deleteAllHistory()
+            .then(() => {
+                setFiles([]);
+                setListCorrupted(false);
+                if (selectedName) navigate("/history");
+            })
+            .catch((e: unknown) => {
+                errorStack.push(normalizeError(e, "Failed to delete"));
+            })
+            .finally(() => setDeleting(false));
+    }, [selectedName, navigate, errorStack]);
+
+    const handleImported = useCallback(() => {
+        api.getHistoryList()
+            .then((fileList) => setFiles(sortByDateDesc(fileList)))
+            .catch((e: unknown) => {
+                errorStack.push(normalizeError(e, "Failed to refresh list"));
+            });
+    }, [errorStack]);
+
+    const showDetail = selectedName !== null && selectedFile !== null;
+
+    return (
+        <>
+            <div class="header">
+                <button type="button" class="header-back-btn" onClick={handleBack} aria-label={t("Back")}>
+                    <Icon svg={backSvg} />
+                </button>
+                <h1>{t(showDetail ? "Clean Map" : "Cleaning History")}</h1>
+                <div class="header-right-spacer" />
+            </div>
+
+            <ErrorBannerStack errors={errors} />
+
+            <div class="history-page">
+                {loading && (
+                    <div class="history-empty">
+                        <T>Loading...</T>
+                    </div>
+                )}
+
+                {!loading && listCorrupted && !showDetail && (
+                    <div class="history-recovery">
+                        <h2 class="history-recovery-title">
+                            <T>Cleaning history is corrupted</T>
+                        </h2>
+                        <p class="history-recovery-msg">
+                            <T>
+                                One of the stored sessions contains malformed data and is preventing the list from
+                                loading. The recovery guide explains how to identify and remove the bad session(s)
+                                without losing the rest. If you'd rather not investigate, you can wipe everything in one
+                                go.
+                            </T>
+                        </p>
+                        <div class="history-recovery-actions">
+                            <a
+                                class="history-recovery-link"
+                                href={RECOVERY_GUIDE_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <T>Open recovery guide</T>
+                            </a>
+                            <button
+                                type="button"
+                                class={`history-delete-all-btn${deleting ? " pending" : ""}`}
+                                onClick={() => setConfirmReset(true)}
+                                disabled={deleting}
+                            >
+                                <T>Delete all history</T>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {!loading && !listCorrupted && files.length === 0 && !showDetail && (
+                    <HistoryListView
+                        files={files}
+                        hasRecording={false}
+                        deleting={false}
+                        onSelect={handleSelect}
+                        onDeleteSession={handleDeleteSession}
+                        onDeleteAll={handleDeleteAll}
+                        onImported={handleImported}
+                        onError={errorStack.push}
+                        distanceUnit={distanceUnit}
+                    />
+                )}
+
+                {!loading && !listCorrupted && files.length > 0 && !showDetail && (
+                    <HistoryListView
+                        files={files}
+                        hasRecording={hasRecording}
+                        deleting={deleting}
+                        onSelect={handleSelect}
+                        onDeleteSession={handleDeleteSession}
+                        onDeleteAll={handleDeleteAll}
+                        onImported={handleImported}
+                        onError={errorStack.push}
+                        distanceUnit={distanceUnit}
+                    />
+                )}
+
+                {!loading && showDetail && (
+                    <HistoryItemView
+                        file={selectedFile}
+                        map={selectedMap}
+                        mapEmpty={mapEmpty}
+                        recording={selectedRecording}
+                        distanceUnit={distanceUnit}
+                    />
+                )}
+
+                {confirmReset && (
+                    <ConfirmDialog
+                        message={t("Delete all map data?")}
+                        confirmLabel={t("Delete")}
+                        disabled={deleting}
+                        onConfirm={() => {
+                            setConfirmReset(false);
+                            handleDeleteAll();
+                        }}
+                        onCancel={() => setConfirmReset(false)}
+                    />
+                )}
+            </div>
+        </>
+    );
+}
