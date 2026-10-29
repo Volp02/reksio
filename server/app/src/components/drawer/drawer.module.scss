@@ -1,0 +1,68 @@
+
+@use '../../variables.scss' as *;
+
+.drawer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: $bg;
+    z-index: 999;
+    touch-action: none;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.drawerHandle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    min-height: 6rem;
+
+    &:active {
+        cursor: grabbing;
+    }
+
+    &::before {
+        content: '';
+        display: block;
+        width: 4rem;
+        height: 0.4rem;
+        background: $border-strong;
+        border-radius: 0.2rem;
+        margin-bottom: 0.8rem;
+    }
+}
+
+.drawerTitle {
+    color: $text-primary;
+    font-weight: 600;
+    font-size: 1.3rem;
+    letter-spacing: 0.05rem;
+    text-transform: uppercase;
+}
+
+.drawerContent {
+    padding: 1.6rem;
+    color: $text-primary;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+
+.handleIcon {
+    color: $text-primary;
+    cursor: pointer;
+    position: absolute;
+    left: 2rem;
+    padding: 0.4rem;
+    border-radius: 50%;
+    @include pressable;
+}

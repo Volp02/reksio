@@ -1,0 +1,108 @@
+@use '../../variables.scss' as *;
+
+.picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+// Header: big swatch + hex, toggles the custom picker
+.current {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.7rem 1rem;
+    border: none;
+    border-radius: 1rem;
+    background: $surface;
+    color: $text-primary;
+    font-size: 1.3rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    @include pressable;
+}
+
+.swatchLarge {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.8rem;
+    border: 2px solid $border-strong;
+    flex: none;
+}
+
+.hex {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: 0.05rem;
+    flex: 1;
+}
+
+.chevron {
+    font-size: 0.9rem;
+    color: $text-muted;
+}
+
+// Preset swatches
+.presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+}
+
+.preset {
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    padding: 0;
+    @include pressable;
+}
+
+.presetActive {
+    border-color: $text-primary;
+    box-shadow: 0 0 0 2px $surface;
+}
+
+// Custom picker (react-colorful) + hex field
+.custom {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.colorful {
+    // react-colorful sizes itself with inline styles; override for the drawer width.
+    width: 100% !important;
+    height: 16rem !important;
+    border-radius: 1rem;
+    overflow: hidden;
+
+    // Slightly larger handles for touch.
+    :global(.react-colorful__pointer) {
+        width: 2.4rem;
+        height: 2.4rem;
+    }
+
+    :global(.react-colorful__saturation) {
+        border-radius: 1rem 1rem 0 0;
+        border-bottom: 0;
+    }
+
+    :global(.react-colorful__hue) {
+        height: 2.2rem;
+        border-radius: 0 0 1rem 1rem;
+    }
+}
+
+.hexInput {
+    padding: 0.9rem 1rem;
+    border-radius: 1rem;
+    background: $surface;
+    color: $text-primary;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 1.3rem;
+    font-weight: 600;
+    border: none;
+    text-transform: lowercase;
+}

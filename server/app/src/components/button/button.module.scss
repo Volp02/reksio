@@ -1,0 +1,39 @@
+@use '../../variables.scss' as *;
+
+
+.button {
+    padding: 0.8rem 1.5rem;
+    border: 1px solid transparent; // tinted on hover by pressable()
+    color: $text-primary;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-radius: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    @include pressable($hover-border: true);
+
+    &:disabled {
+        opacity: 0.4;
+    }
+}
+
+.primary {
+    background: $accent;
+    color: $on-accent;
+}
+
+.secondary {
+    background: $surface;
+}
+
+// Same look as the "New schedule" / "New map" action cards.
+.success {
+    background: $accent-soft;
+    color: $text-primary;
+}
+
+.fail {
+    background: $err-bg;
+}

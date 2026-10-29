@@ -1,0 +1,29 @@
+.info {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-shrink: 0;
+}
+
+.iconErr {
+    color: var(--err);
+    flex-shrink: 0;
+}
+
+.iconWarn {
+    color: var(--warn);
+    flex-shrink: 0;
+}
+
+.iconDocked {
+    color: var(--info);
+    opacity: 0.9;
+    flex-shrink: 0;
+}
+
+.status {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}

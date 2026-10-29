@@ -1,0 +1,142 @@
+@use '../../variables.scss' as *;
+
+
+.section {
+    display: flex;
+    flex-direction: column;
+    // padding-bottom: 2rem;
+}
+
+.label {
+    margin-bottom: 0.8rem;
+    font-size: 1.2rem;
+    color: $accent;
+    font-weight: 600;
+    letter-spacing: 0.03rem;
+    text-transform: uppercase;
+}
+
+.extraInfo {
+    margin-top: 0.6rem;
+    font-size: 0.9rem;
+    color: $text-muted;
+}
+
+
+.text {
+    padding: 0.9rem 1rem;
+    border-radius: 1rem;
+    background: $surface;
+    color: $text-primary;
+    font-size: 1.5rem;
+    font-weight: 600;
+    border: none;
+}
+
+
+.selectButtons {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.selectButton {
+    flex: 1;
+    padding: 0.9rem 1rem;
+    border-radius: 1rem;
+    background: $surface;
+    color: $text-primary;
+    cursor: pointer;
+    font-size: 1.2rem;
+    // font-size: 0.95rem;
+    font-weight: 600;
+    pointer-events: auto;
+    border: none;
+    @include pressable;
+}
+
+.activeSelectButton {
+    background: $surface-2;
+}
+
+
+.switch {
+    display: inline-block;
+    position: relative;
+    width: 5.2rem;
+    height: 2.8rem;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+        display: none;
+    }
+
+    .slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: $switch-track;
+        border-radius: 1.4rem;
+        transition: background 0.3s ease;
+
+        &::before {
+            content: '';
+            position: absolute;
+            top: 0.4rem;
+            left: 0.4rem;
+            width: 2rem;
+            height: 2rem;
+            background: $switch-knob;
+            border-radius: 50%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: $shadow-sm;
+        }
+    }
+
+    input[type="checkbox"]:checked+.slider {
+        background: $accent-soft;
+
+        &::before {
+            left: 2.8rem;
+            background: $accent;
+            box-shadow: 0 3px 8px $accent-glow;
+        }
+    }
+}
+
+.dropdownWrapper {
+    position: relative;
+    display: flex;
+}
+
+.dropdown {
+    width: 100%;
+    padding: 0.9rem 2.8rem 0.9rem 1rem;
+    border-radius: 1rem;
+    background: $surface;
+    color: $text-primary;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+
+    // Options render via the OS/browser's native popup — not much stylable cross-browser,
+    // but keep them at least readable on dark surfaces.
+    option {
+        background: $surface;
+        color: $text-primary;
+    }
+}
+
+.dropdownIcon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $text-primary;
+    pointer-events: none;
+}

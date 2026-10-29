@@ -1,0 +1,143 @@
+@use '../../variables.scss' as *;
+
+.container {
+    position: relative;
+    width: 90%;
+    height: 80%;
+}
+
+.topbar {
+    appearance: none;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+
+    background: $bg;
+    border-radius: 2rem;
+    border: 0.1rem solid $border;
+    box-shadow: $shadow-md;
+    padding: 0 1.4rem 0 1.8rem;
+    gap: 1rem;
+    overflow: hidden;
+
+    transition: background 0.15s, border-color 0.15s;
+
+    &:hover {
+        background: $surface-hover;
+        border-color: $border-strong;
+    }
+
+    &:active {
+        background: $bg;
+        transform: scale(0.99);
+    }
+}
+
+.pulseDot {}
+
+.name {
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: $text-primary;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.right {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    flex-shrink: 0;
+}
+
+.iconErr {
+    color: $err;
+    flex-shrink: 0;
+}
+
+.iconWarn {
+    color: $warn;
+    flex-shrink: 0;
+}
+
+.iconDocked {
+    color: $info;
+    opacity: 0.9;
+    flex-shrink: 0;
+}
+
+.chevron {
+    color: $text-dim;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+.dropdown {
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    left: 0;
+    right: 0;
+    z-index: 20;
+
+    background: $bg;
+    border: 0.1rem solid $border;
+    border-radius: 1.4rem;
+    box-shadow: $shadow-lg;
+    overflow: hidden;
+}
+
+.dropdownItem {
+    appearance: none;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.2rem 1.6rem;
+
+    background: transparent;
+    border: none;
+    border-bottom: 0.1rem solid $border;
+    color: $text-primary;
+    font-size: 1.4rem;
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    &:hover {
+        background: $surface-hover;
+    }
+}
+
+.dropdownItemActive {
+    color: $accent;
+}
+
+.dropdownName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dropdownCheck {
+    color: $accent;
+    flex-shrink: 0;
+}

@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+msg="$(git log -1 --pretty=%B)"
+version=""
+
+# Same tags as the GitHub workflow
+if [[ "$msg" =~ release:([0-9A-Za-z._-]+) ]]; then
+    version="${BASH_REMATCH[1]}"
+elif [[ "$msg" =~ dbuild:([0-9A-Za-z._-]+) ]]; then
+    version="${BASH_REMATCH[1]}"
+fi
+version="${version%%[._-]}"
+
+[[ -z "$version" ]] && exit 0
+
+cd "$(git rev-parse --show-toplevel)/server"
+
+current="$(sed -nE 's/^version = "(.*)"/\1/p' pyproject.toml | head -1)"
+
+[[ "$current" == "$version" ]] && exit 0
+
+sed -i.bak -E "s/^version = \".*\"/version = \"$version\"/" pyproject.toml
+rm -f pyproject.toml.bak
+
+if command -v uv >/dev/null 2>&1; then
+    uv lock --quiet
+else
+    echo "post-commit: uv not found, uv.lock not refreshed" >&2
+fi
+
+git add pyproject.toml uv.lock
+git commit --amend --no-edit --no-verify --only pyproject.toml uv.lock >/dev/null
+
+echo "post-commit: pyproject version set to $version"

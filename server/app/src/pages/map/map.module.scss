@@ -1,0 +1,288 @@
+@use '../../variables.scss' as *;
+
+// Canvas element
+.canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: $bg;
+}
+
+// Container
+.container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.drawerSection {
+    margin-bottom: 16px;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+.actionButtons {
+    display: flex;
+    position: absolute;
+    justify-content: center;
+    align-items: center;
+    gap: 4rem;
+    width: 100%;
+    bottom: 10rem;
+
+    &>div {
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        box-shadow: $shadow-md;
+        @include pressable;
+
+        // Floating controls: keep the drop shadow under the hover ring.
+        &:hover:not(:disabled):not(.disabled) {
+            box-shadow: $shadow-md, 0 0 12px $accent-ring;
+        }
+    }
+
+    .btngroup {
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+    }
+
+    .add {
+        background: $accent;
+        padding: 3rem;
+    }
+
+    .cancel {
+        background: $err-bg;
+    }
+
+    .undo,
+    .closePolygon {
+        background: $surface;
+    }
+
+    .disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.editBoundaryDetails {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.editBoundaryActionButtons {
+    display: flex;
+    justify-content: space-around;
+    gap: 2rem;
+
+    button {
+        width: 45%;
+    }
+}
+
+.boundaryDetails {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    .zoneActions {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 1rem;
+        padding-top: 1rem;
+
+        button {
+            width: 100%;
+        }
+    }
+}
+
+.buttonContainer {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    padding-bottom: 1rem;
+
+    button {
+        margin-left: auto;
+    }
+}
+
+.featureList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    .item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: $surface;
+        border: 1px solid transparent;
+        border-radius: 1rem;
+        justify-content: space-between;
+        @include hoverable;
+
+        .info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+
+            span:first-child {
+                font-size: 1.2rem;
+                font-weight: 600;
+            }
+
+            .type {
+                font-size: 1.2rem;
+            }
+        }
+
+    }
+
+    // A list card that is itself an action ("New map"): same press/hover
+    // feedback as the home-screen controls, accent-tinted, centred text.
+    .actionItem {
+        justify-content: center;
+        text-align: center;
+        background: $accent-soft;
+        border: 1px solid transparent;
+        @include pressable($hover-border: true);
+
+        // Keep the accent tint over the plain-row hover/active backgrounds.
+        &:hover,
+        &:active {
+            background: $accent-soft;
+        }
+
+        &.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    }
+}
+
+.mapSelectorWrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.mapSelector {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.mapLabel {
+    font-size: 1rem;
+    font-weight: 600;
+    color: $text-primary;
+}
+
+
+.selectMap {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: $overlay-bg;
+    color: $text-primary
+}
+
+.dropdownContainer {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.mapDropdown {
+    width: 100%;
+    padding: 0.8rem 1.2rem;
+    padding-right: 2.5rem;
+    background: $surface;
+    color: $text-primary;
+    border: 2px solid $border;
+    border-radius: 0.8rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    transition: all 0.2s ease;
+
+    &:hover {
+        border-color: $accent;
+        background: $surface-hover;
+    }
+
+    &:focus {
+        outline: none;
+        border-color: $accent;
+        box-shadow: 0 0 0 3px $accent-ring;
+    }
+
+    option {
+        background: $bg;
+        color: $text-primary;
+        padding: 0.5rem;
+    }
+}
+
+.dropdownArrow {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: $accent;
+    font-size: 0.8rem;
+}
+
+.mapControlButtons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.iconButton {
+    padding: 0.8rem 1rem;
+    background: $surface;
+    border: 2px solid $border;
+    border-radius: 0.8rem;
+    color: $text-primary;
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    @include pressable($hover-border: true);
+
+    &:hover:not(:disabled):not(.disabled) {
+        background: $surface-hover;
+        color: $accent;
+    }
+
+    &.active {
+        background: $accent-soft;
+        border-color: $accent;
+        color: $accent;
+    }
+}
