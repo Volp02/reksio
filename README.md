@@ -1,1 +1,36 @@
 # Reksio
+
+Neato Botvac D7 ohne Neato-Cloud:
+
+- **`server/`**: Fork von [vacuula/vacuula](https://github.com/vacuula/vacuula), dem Ersatz-Server für die Neato-Cloud (Python-Server + Web-App). Hier kommt die Telemetrie-Anzeige hinzu.
+- **`esp/`**: Fork von [renjfk/OpenNeato](https://github.com/renjfk/OpenNeato), der ESP32-Firmware am Debug-Port des Roboters (UART). Ziel: ohne Web-UI, nur REST-API/Telemetrie-Stream.
+- **`tools/`**: Hilfsskripte, z. B. `pose-logger.py` (Schritt 0: Koordinatenabgleich).
+
+## Architektur
+
+```
+D7 ──UART──► ESP32 (headless, nur API) ──WLAN──► Vacuula-Server (Docker) ──► Web-App / Home Assistant
+D7 ──WLAN (Cloud-Protokoll)─────────────────────► Vacuula-Server
+```
+
+## Upstream
+
+Beide Projekte sind per `git subtree` eingebunden (mit Historie).
+
+```bash
+git remote add vacuula-upstream https://github.com/vacuula/vacuula.git
+git remote add openneato-upstream https://github.com/renjfk/OpenNeato.git
+
+# Updates holen
+git subtree pull --prefix=server vacuula-upstream main
+git subtree pull --prefix=esp openneato-upstream main
+
+# Änderungen für einen Upstream-PR herauslösen
+git subtree split --prefix=server -b server-upstream
+```
+
+## Lizenzen
+
+- `server/`: AGPL-3.0 (siehe `server/LICENSE`)
+- `esp/`: MIT (siehe `esp/LICENSE`)
+- Eigener Code außerhalb dieser Ordner: AGPL-3.0 (siehe `LICENSE`)

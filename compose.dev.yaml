@@ -1,0 +1,22 @@
+# Dev-Build des Vacuula-Forks. Läuft parallel zum Produktiv-Stack (/opt/stacks/vacuula),
+# daher andere Ports und kein mDNS. Der Roboter bleibt am Produktiv-Server.
+services:
+  vacuula-dev:
+    build:
+      context: ./server
+      dockerfile: build/docker/Dockerfile
+    image: reksio-vacuula:dev
+    network_mode: host
+    environment:
+      - VACUULA_PORT=8150
+      - GEN3_PORT=1335
+      - GEN4_PORT=13443
+      - MDNS_ENABLED=False
+      - TZ=Europe/Berlin
+      # - HOST_IP=<SERVER-IP>  # nur nötig, wenn die IP nicht automatisch erkannt wird
+      - LOG_LEVEL=debug
+    volumes:
+      - vacuula-dev-data:/server/data
+
+volumes:
+  vacuula-dev-data:
