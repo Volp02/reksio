@@ -9,6 +9,7 @@ from typing import Callable, Optional, Tuple, List
 from .app import get_robots, get_maps, get_map, get_run, post_map, post_robot, get_runs, connect_robot, post_robot_command, get_server_info
 from .events import get_events
 from .telemetry import get_telemetry, get_telemetry_latest, get_poses
+from .esp import get_esp, put_esp, proxy_esp
 from vacuula_server.handlers.setup import get_cert, get_log, get_log_full
 
 #gen4
@@ -43,6 +44,11 @@ APP_ROUTES: List[Tuple[str, str, Handler]] = [
     ("GET", "/api/log/full", get_log_full),
     ("GET", "/api/server", get_server_info),
     ("GET", "/api/robots", get_robots),
+    ("GET", "/api/esp", get_esp),
+    ("PUT", "/api/esp", put_esp),
+    ("GET", r"/api/esp/api/(.+)", proxy_esp),
+    ("PUT", r"/api/esp/api/(.+)", proxy_esp),
+    ("POST", r"/api/esp/api/(.+)", proxy_esp),
     ("GET", "/api/events", get_events),
     ("GET", r"/api/robot/(.+)/connect", connect_robot),
     ("GET", r"/api/robot/(.+)/maps", get_maps),

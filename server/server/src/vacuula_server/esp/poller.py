@@ -18,7 +18,8 @@ import urllib.request
 from sqlalchemy import delete, select
 
 from vacuula_server.db import db_commit2, get_session
-from vacuula_server.env import ESP_HOST, ESP_POLL_S, ESP_POSE_POLL_S, ESP_ROBOT, TELEMETRY_RETENTION_DAYS
+from vacuula_server.env import ESP_POLL_S, ESP_POSE_POLL_S, ESP_ROBOT, TELEMETRY_RETENTION_DAYS
+from vacuula_server.esp.config import get_esp_host
 from vacuula_server.handlers.events import broadcast
 from vacuula_server.models.robot import Robot
 from vacuula_server.models.telemetry import Pose, Telemetry
@@ -42,7 +43,9 @@ def parse_pose(raw: str) -> tuple[float, float, float] | None:
 
 class EspPoller:
     def __init__(self, host: str):
+        self.host = host
         self.base = f"http://{host}"
+        self.last_ok: float | None = None
         self.serial: str | None = None
         self.online: bool | None = None
         self.state: dict | None = None
@@ -77,6 +80,8 @@ class EspPoller:
         return None
 
     def _set_online(self, online: bool) -> None:
+        if online:
+            self.last_ok = time.time()
         if online != self.online:
             if online:
                 logger.info("ESP %s reachable, polling for robot %s", self.base, self.serial)
@@ -136,15 +141,27 @@ class EspPoller:
             self.cleanup(now)
 
 
+# aktueller Poller, für den Verbindungsstatus in GET /api/esp
+current: EspPoller | None = None
+
+
 def start() -> None:
-    if not ESP_HOST:
-        return
-    poller = EspPoller(ESP_HOST)
-    logger.info("ESP poller started for %s", ESP_HOST)
+    """Läuft immer; fragt nur ab, solange eine ESP-Adresse gesetzt ist. Adresswechsel greifen beim nächsten Takt."""
+    global current
     while True:
         started = time.time()
+        host = get_esp_host()
+        if not host:
+            if current:
+                logger.info("ESP poller stopped (no address)")
+            current = None
+            threading.Event().wait(5)
+            continue
+        if current is None or current.host != host:
+            current = EspPoller(host)
+            logger.info("ESP poller started for %s", host)
         try:
-            poller.tick()
+            current.tick()
         except Exception:
             logger.exception("ESP poller tick failed")
         threading.Event().wait(max(0.5, ESP_POSE_POLL_S - (time.time() - started)))
