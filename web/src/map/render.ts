@@ -1,10 +1,13 @@
 import type { MapData } from '../api/types'
 
-/** Pixel pro Kartenzelle im vorgerenderten Bild; darüber wird live gezeichnet */
-export const BITMAP_SCALE = 4
+/** Stufen des vorgerenderten Bilds (Pixel pro Kartenzelle); über der größten wird live gezeichnet */
+export const BITMAP_LEVELS = [1, 2, 4] as const
+export const BITMAP_SCALE = BITMAP_LEVELS[BITMAP_LEVELS.length - 1]
 
-// Punktdurchmesser relativ zur Zelle (wie die bisherige Vacuula-Karte)
+// Punktdurchmesser relativ zur Zelle (wie die bisherige Vacuula-Karte) …
 const DOT = { floor: 0.45, wall: 0.75, run: 0.5 }
+// … aber nie kleiner als diese Pixel, sonst verblassen Wände beim Rauszoomen (Deckung sinkt)
+const MIN_PX = { floor: 1, wall: 1.5, run: 1 }
 const RUN_ALPHA = 0.8
 
 export interface Grid {
@@ -74,7 +77,14 @@ export function toGrid(floor: MapData, run?: MapData): Grid {
 export function drawDots(g: CanvasRenderingContext2D, grid: Grid, c: Colors, scale: number, ox: number, oy: number,
     x0 = 0, y0 = 0, x1 = grid.width, y1 = grid.height) {
     const floor = new Path2D(), wall = new Path2D(), run = new Path2D()
-    const rf = (DOT.floor * scale) / 2, rw = (DOT.wall * scale) / 2, rr = (DOT.run * scale) / 2
+    const size = (k: keyof typeof DOT) => Math.min(scale, Math.max(DOT[k] * scale, MIN_PX[k]))
+    const df = size('floor'), dw = size('wall'), dr = size('run')
+    // sehr klein: Quadrate statt Kreise (Kreise unter ~2 px werden nur unscharf)
+    const square = scale <= 2
+    const add = (p: Path2D, cx: number, cy: number, d: number) => {
+        if (square) p.rect(cx - d / 2, cy - d / 2, d, d)
+        else { p.moveTo(cx + d / 2, cy); p.arc(cx, cy, d / 2, 0, Math.PI * 2) }
+    }
     const w = grid.width
     for (let y = y0; y < y1; y++) {
         const cy = oy + (y + 0.5) * scale
@@ -83,9 +93,9 @@ export function drawDots(g: CanvasRenderingContext2D, grid: Grid, c: Colors, sca
             const i = row + x
             const v = grid.floor[i]
             const cx = ox + (x + 0.5) * scale
-            if (v === 1) { floor.moveTo(cx + rf, cy); floor.arc(cx, cy, rf, 0, Math.PI * 2) }
-            else if (v === 2) { wall.moveTo(cx + rw, cy); wall.arc(cx, cy, rw, 0, Math.PI * 2) }
-            if (grid.run?.[i]) { run.moveTo(cx + rr, cy); run.arc(cx, cy, rr, 0, Math.PI * 2) }
+            if (v === 1) add(floor, cx, cy, df)
+            else if (v === 2) add(wall, cx, cy, dw)
+            if (grid.run?.[i]) add(run, cx, cy, dr)
         }
     }
     g.fillStyle = c.floor
@@ -100,11 +110,16 @@ export function drawDots(g: CanvasRenderingContext2D, grid: Grid, c: Colors, sca
     }
 }
 
-/** Ganze Karte einmal in BITMAP_SCALE vorrendern (für Übersicht und Rauszoomen) */
-export function renderBitmap(grid: Grid, c: Colors): HTMLCanvasElement {
+/** Ganze Karte einmal in `level` Pixel pro Zelle vorrendern (für Übersicht und Rauszoomen) */
+export function renderBitmap(grid: Grid, c: Colors, level: number): HTMLCanvasElement {
     const canvas = document.createElement('canvas')
-    canvas.width = grid.width * BITMAP_SCALE
-    canvas.height = grid.height * BITMAP_SCALE
-    drawDots(canvas.getContext('2d')!, grid, c, BITMAP_SCALE, 0, 0)
+    canvas.width = grid.width * level
+    canvas.height = grid.height * level
+    drawDots(canvas.getContext('2d')!, grid, c, level, 0, 0)
     return canvas
+}
+
+/** Stufe, die höchstens 2× verkleinert werden muss (starkes Verkleinern mischt Punkte mit dem Hintergrund) */
+export function pickLevel(devicePxPerCell: number): number {
+    return BITMAP_LEVELS.find((l) => l >= devicePxPerCell) ?? BITMAP_SCALE
 }

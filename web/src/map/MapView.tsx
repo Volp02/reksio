@@ -4,7 +4,7 @@ import type { Boundary, MapData } from '../api/types'
 import { useI18n } from '../i18n'
 import { useTheme } from '../ui/theme'
 import { IconButton } from '../ui/ui'
-import { BITMAP_SCALE, drawDots, mapColors, renderBitmap, toGrid, type Colors, type Grid } from './render'
+import { BITMAP_SCALE, drawDots, mapColors, pickLevel, renderBitmap, toGrid, type Colors, type Grid } from './render'
 import './map.css'
 
 const MAX_SCALE = 24 // CSS-Pixel pro Kartenzelle
@@ -34,7 +34,15 @@ export function MapView({ data, run, boundaries, label, controls = 'full', fill 
     // Farben und Punktebild nur bei neuer Karte oder neuem Thema neu erzeugen
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const colors = useMemo<Colors>(() => mapColors(), [resolved])
-    const bitmap = useMemo(() => renderBitmap(grid, colors), [grid, colors])
+    // Bildstufen erst bei Bedarf erzeugen, dann behalten
+    const bitmaps = useMemo(() => {
+        const cache = new Map<number, HTMLCanvasElement>()
+        return (level: number) => {
+            let b = cache.get(level)
+            if (!b) { b = renderBitmap(grid, colors, level); cache.set(level, b) }
+            return b
+        }
+    }, [grid, colors])
     const bounds = grid.bounds
 
     const draw = useCallback(() => {
@@ -50,10 +58,10 @@ export function MapView({ data, run, boundaries, label, controls = 'full', fill 
             g.fillRect(0, 0, c.width, c.height)
 
             if (scale * dpr <= BITMAP_SCALE * 1.25) {
-                // rausgezoomt: vorgerendertes Bild skalieren
+                // rausgezoomt: passende Stufe des vorgerenderten Bilds skalieren
                 g.imageSmoothingEnabled = true
                 g.imageSmoothingQuality = 'high'
-                g.drawImage(bitmap, x, y, grid.width * scale, grid.height * scale)
+                g.drawImage(bitmaps(pickLevel(scale * dpr)), x, y, grid.width * scale, grid.height * scale)
             } else {
                 // reingezoomt: nur sichtbare Zellen live, damit die Punkte scharf bleiben
                 const w = c.width / dpr, h = c.height / dpr
@@ -76,7 +84,7 @@ export function MapView({ data, run, boundaries, label, controls = 'full', fill 
                 g.stroke()
             }
         })
-    }, [bitmap, boundaries, colors, data.dock, grid])
+    }, [bitmaps, boundaries, colors, data.dock, grid])
 
     const fitScale = useCallback(() => {
         const el = wrap.current

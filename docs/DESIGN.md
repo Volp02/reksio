@@ -256,7 +256,9 @@ Lädt Reksio, steht „lädt“ und, wenn bekannt, die Zeit bis voll.
 
 ### 12.4 Karte
 
-- Die Punkte werden **einmal** in 4 Pixeln pro Zelle vorgerendert (je Thema). Rausgezoomt wird nur dieses Bild skaliert;
+- Die Punkte werden vorgerendert (je Thema, Stufen 1, 2 und 4 Pixel pro Zelle, bei Bedarf); gezeichnet wird die Stufe,
+  die höchstens 2× verkleinert werden muss, sonst verblassen die Wände. Punkte haben eine Mindestgröße (Wand 1,5 px,
+  Boden 1 px), bis 2 px pro Zelle als Quadrate;
   ab mehr als 5 Pixeln pro Zelle werden nur die sichtbaren Punkte live gezeichnet, damit sie scharf bleiben.
   Zonen, No-Go-Linien, Basis und Position liegen als Vektoren darüber.
 - Fahrten (Reinigungen) liegen über der Bodenkarte mit derselben ID; beide haben dasselbe Raster.
