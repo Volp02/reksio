@@ -5,6 +5,7 @@ Neato Botvac D7 ohne Neato-Cloud:
 - **`server/`**: Fork von [vacuula/vacuula](https://github.com/vacuula/vacuula), dem Ersatz-Server für die Neato-Cloud (Python-Server + Web-App). Hier kommt die Telemetrie-Anzeige hinzu.
 - **`esp/`**: Fork von [renjfk/OpenNeato](https://github.com/renjfk/OpenNeato), der ESP32-Firmware am Debug-Port des Roboters (UART). Ziel: ohne Web-UI, nur REST-API/Telemetrie-Stream.
 - **`tools/`**: Hilfsskripte, z. B. `pose-logger.py` (Schritt 0: Koordinatenabgleich).
+- **`android/`**: Android-App: Vacuula-Weboberfläche plus Wächter, der die gecachten ESP-Endpunkte (`/api/state`, `/api/error`, `/api/charger`) alle 20 s liest und Fehler, Pausen, Weiterfahrt und Ende als lokale Benachrichtigung meldet (nur im Heimnetz, ohne Cloud). Bau: `android/build.sh`, Adressen in `android/local.properties` (`reksio.vacuulaUrl`, `reksio.espHost`).
 
 ## Architektur
 

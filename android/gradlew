@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+set -e
+DIR="$(cd "$(dirname "$0")" && pwd)"
+WRAPPER_JAR="$DIR/gradle/wrapper/gradle-wrapper.jar"
+if [ ! -f "$WRAPPER_JAR" ]; then
+    echo "gradle-wrapper.jar not found, downloading from official Gradle repo..."
+    mkdir -p "$DIR/gradle/wrapper"
+    curl -sLo "$WRAPPER_JAR" "https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar" ||     wget -qO "$WRAPPER_JAR" "https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar"
+fi
+exec java -Dorg.gradle.appname=gradlew -classpath "$WRAPPER_JAR" org.gradle.wrapper.GradleWrapperMain "$@"

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Reksio</string>
+    <string name="stop">Beenden</string>
+    <string name="kanal_dauer">Wächter</string>
+    <string name="kanal_info">Ablauf</string>
+    <string name="kanal_warnung">Fehler und Störungen</string>
+</resources>
