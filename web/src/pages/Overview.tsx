@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import {
-    BatteryCharging, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, History, House, Map as MapIcon, Pause, Play, Square, TriangleAlert,
+    BatteryCharging, Shapes, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, History, House, Map as MapIcon, Pause, Play, Square, TriangleAlert,
 } from 'lucide-react'
 import { gen3 } from '../api/client'
 import { CleaningCategory, CleaningMode, NavigationMode } from '../api/types'
@@ -12,7 +12,7 @@ import { fmtDuration, fmtNumber, fmtTime, fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
 import { Legend } from '../map/Legend'
 import { BatteryChart } from './BatteryChart'
-import { Button, Card, Confirm, Empty, KV, Label, Pill, Segmented, Toast, Value } from '../ui/ui'
+import { Button, Card, Confirm, Empty, IconButton, KV, Label, Pill, Segmented, Toast, Value } from '../ui/ui'
 import { getPrefs, setPrefs, usePrefs } from '../state/prefs'
 import { DiagnosticsCard } from './Diagnostics'
 import './overview.css'
@@ -163,17 +163,24 @@ function BatteryCard() {
 function MapCard() {
     const { t } = useI18n()
     const s = useStore()
+    const prefs = usePrefs()
     const maps = useMaps(s.serial)
     const active = activeMap(maps.data)
     const data = useMapData(s.serial, active?.id)
-    const bounds = useBoundaries(s.serial, active?.id, s.connected)
+    // Zonen nur laden, wenn eingeblendet
+    const bounds = useBoundaries(s.serial, prefs.zones ? active?.id : undefined, s.connected)
+    const zones = prefs.zones ? bounds.data : undefined
     return (
         <Card className="ov-map" icon={<MapIcon />} title={active?.name || t.map.floor}
-            aside={<a href="#/map" className="btn btn--ghost btn--s"><Label>{t.nav.map}</Label></a>}>
+            aside={<>
+                <IconButton size="s" icon={<Shapes />} label={t.map.zones} aria-pressed={prefs.zones}
+                    className={prefs.zones ? 'is-cur' : ''} onClick={() => setPrefs({ zones: !prefs.zones })} />
+                <a href="#/map" className="btn btn--ghost btn--s"><Label>{t.nav.map}</Label></a>
+            </>}>
             {data.data
-                ? <MapView data={data.data} boundaries={bounds.data} label={active?.name || t.map.floor} />
+                ? <MapView data={data.data} boundaries={zones} label={active?.name || t.map.floor} />
                 : <Empty icon={<MapIcon />} label={data.loading || maps.loading ? t.common.loading : t.map.noMap} />}
-            <Legend boundaries={bounds.data} noGo={t.map.noGo} />
+            <Legend boundaries={zones} noGo={t.map.noGo} />
         </Card>
     )
 }

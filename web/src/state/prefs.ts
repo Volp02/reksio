@@ -6,6 +6,7 @@ const KEYS = {
     mode: 'vacuula.gen3.cleaningMode',
     navigation: 'vacuula.gen3.navigationMode',
     diagnostics: 'reksio.overview.diagnostics',
+    zones: 'reksio.overview.zones',
 } as const
 
 export interface Prefs {
@@ -13,6 +14,8 @@ export interface Prefs {
     navigation: NavigationMode
     /** Diagnose-Karte auf der Übersicht */
     diagnostics: boolean
+    /** Zonen auf der Übersichtskarte (Standard: aus) */
+    zones: boolean
 }
 
 function read(): Prefs {
@@ -21,6 +24,7 @@ function read(): Prefs {
         mode: Number(localStorage.getItem(KEYS.mode)) === CleaningMode.TURBO ? CleaningMode.TURBO : CleaningMode.ECO,
         navigation: nav === NavigationMode.EXTRA_CARE || nav === NavigationMode.DEEP ? nav : NavigationMode.NORMAL,
         diagnostics: localStorage.getItem(KEYS.diagnostics) === '1',
+        zones: localStorage.getItem(KEYS.zones) === '1',
     }
 }
 
@@ -32,6 +36,7 @@ export function setPrefs(patch: Partial<Prefs>) {
     localStorage.setItem(KEYS.mode, String(current.mode))
     localStorage.setItem(KEYS.navigation, String(current.navigation))
     localStorage.setItem(KEYS.diagnostics, current.diagnostics ? '1' : '0')
+    localStorage.setItem(KEYS.zones, current.zones ? '1' : '0')
     listeners.forEach((l) => l())
 }
 

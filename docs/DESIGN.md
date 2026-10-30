@@ -105,6 +105,8 @@ Legende ab zwei Reihen.
 | No-Go-Linie | Farbe vom Roboter (sonst `danger`), 3 px, gestrichelt | — | — |
 
 Jede Kartenzelle ist ein Punkt (wie in der bisherigen Vacuula-Karte). Unter der Karte steht die Legende der Zonen (Name + Farbe).
+Auf der Übersicht sind Zonen standardmäßig aus; der Schalter (Icon `Shapes`) sitzt im Kopf der Kartenkarte links neben „Karte“.
+Auf der Kartenseite sind sie immer an.
 Die Karte nutzt die Thema-Farben, kein festes Bild-Schwarz-Weiß.
 
 ### 3.6 Kontrast (WCAG 2.x, berechnet)

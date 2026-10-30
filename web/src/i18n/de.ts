@@ -111,6 +111,7 @@ const de = {
         dock: 'Basis',
         floor: 'Grundriss',
         noGo: 'No-Go-Linie',
+        zones: 'Zonen',
     },
     runs: {
         title: 'Reinigungen',
