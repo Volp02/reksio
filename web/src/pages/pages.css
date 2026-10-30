@@ -35,10 +35,3 @@
 }
 .savebar-l { flex: 1; font-weight: 500; }
 @container app (max-width: 640px) { .savebar { bottom: calc(76px + env(safe-area-inset-bottom)); } }
-
-/* ESP-Zeitplan: 7 Tage × 2 Zeiten */
-.sched { display: flex; flex-direction: column; }
-.sched-day { display: flex; align-items: center; gap: var(--s-3); padding: 6px 0; border-top: 1px solid var(--border); flex-wrap: wrap; }
-.sched-d { width: 3rem; font-weight: 500; }
-.sched-slot { display: inline-flex; align-items: center; gap: var(--s-2); }
-.chk { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }

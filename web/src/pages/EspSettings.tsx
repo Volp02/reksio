@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Bell, CalendarClock, Cpu, Gamepad2, RotateCcw, Settings2, Volume2, Wrench } from 'lucide-react'
+import { Cpu, RotateCcw, Settings2, Volume2, Wrench } from 'lucide-react'
 import { esp } from '../api/client'
 import { useI18n, fill } from '../i18n'
 import { fmtDuration, fmtNumber } from '../format'
 import { Button, Card, Confirm, Empty, InputRow, KV, Label, Pill, SelectRow, Switch, Toast, Value } from '../ui/ui'
 import './pages.css'
 
-/** Einstellungen der OpenNeato-Firmware (GET/PUT /api/settings am ESP) */
+/**
+ * Einstellungen der OpenNeato-Firmware (GET/PUT /api/settings am ESP). Der ESP läuft headless und nur zum Einstellen
+ * und Auslesen: Zeitplan, Benachrichtigungen und manuelle Reinigung der Firmware sind aus und hier nicht einstellbar.
+ */
 interface EspSettingsData {
     hostname: string
     tz: string
@@ -65,7 +68,6 @@ const TIMEZONES: { label: string; tz: string }[] = [
     { label: 'UK / Ireland', tz: 'GMT0BST,M3.5.0/1,M10.5.0' },
     { label: 'Osteuropa / Eastern Europe', tz: 'EET-2EEST,M3.5.0/3,M10.5.0/4' },
 ]
-const DAYS = 7 // Mo = 0 … So = 6 (OpenNeato)
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const toTime = (h: number, m: number) => `${pad(h)}:${pad(m)}`
@@ -187,53 +189,6 @@ export function EspSettings() {
                                 )) : <Empty label={t.common.loading} />}
                             </Card>
 
-                            <Card icon={<Bell />} title={e.notifications}>
-                                <Switch label={e.ntfyEnabled} checked={d.ntfyEnabled} onChange={(v) => set('ntfyEnabled', v)} />
-                                <InputRow label={e.ntfyTopic} value={d.ntfyTopic} onChange={(v) => set('ntfyTopic', v)} placeholder="reksio" mono />
-                                <Switch label={e.ntfyOnDone} checked={d.ntfyOnDone} onChange={(v) => set('ntfyOnDone', v)} />
-                                <Switch label={e.ntfyOnError} checked={d.ntfyOnError} onChange={(v) => set('ntfyOnError', v)} />
-                                <Switch label={e.ntfyOnAlert} checked={d.ntfyOnAlert} onChange={(v) => set('ntfyOnAlert', v)} />
-                                <Switch label={e.ntfyOnDocking} checked={d.ntfyOnDocking} onChange={(v) => set('ntfyOnDocking', v)} />
-                                <div className="actions">
-                                    <Button size="s" label={e.ntfyTest} disabled={!saved?.ntfyTopic} loading={busy === 'ntfy'}
-                                        onClick={() => run('ntfy', () => esp.post(`notifications/test?topic=${encodeURIComponent(saved!.ntfyTopic)}`), e.sent)} />
-                                </div>
-                            </Card>
-
-                            <Card icon={<CalendarClock />} title={e.schedule}>
-                                <Switch label={e.scheduleEnabled} checked={d.scheduleEnabled} onChange={(v) => set('scheduleEnabled', v)} />
-                                <SelectRow label={e.navMode} value={d.navMode} onChange={(v) => set('navMode', v)} options={[
-                                    { value: 'Normal', label: t.overview.normalNav }, { value: 'Gentle', label: t.overview.extraCare },
-                                    { value: 'Deep', label: t.overview.deep }, { value: 'Quick', label: e.quick }]} />
-                                <div className="sched">
-                                    {Array.from({ length: DAYS }, (_, day) => (
-                                        <div className="sched-day" key={day}>
-                                            <Label className="sched-d">{t.schedule.days[(day + 1) % 7]}</Label>
-                                            {[0, 1].map((slot) => {
-                                                const key = slot === 0 ? `sched${day}` : `sched${day}Slot1`
-                                                const v = d as unknown as Record<string, number | boolean>
-                                                const h = v[`${key}Hour`] as number, m = v[`${key}Min`] as number, on = v[`${key}On`] as boolean
-                                                return (
-                                                    <span className="sched-slot" key={slot}>
-                                                        <input className="input" type="time" value={toTime(h, m)} aria-label={`${t.schedule.days[(day + 1) % 7]} ${slot + 1}`}
-                                                            onChange={(ev) => { const [hh, mm] = fromTime(ev.target.value); setDraft((x) => x && { ...x, [`${key}Hour`]: hh, [`${key}Min`]: mm }) }} />
-                                                        <input type="checkbox" className="chk" checked={on} aria-label={e.slotOn}
-                                                            onChange={(ev) => setDraft((x) => x && { ...x, [`${key}On`]: ev.target.checked })} />
-                                                    </span>
-                                                )
-                                            })}
-                                        </div>
-                                    ))}
-                                </div>
-                            </Card>
-
-                            <Card icon={<Gamepad2 />} title={e.manual}>
-                                <InputRow type="number" label={e.stall} unit="%" min={30} max={80} step={10} value={d.stallThreshold} onChange={(v) => set('stallThreshold', Number(v))} />
-                                <InputRow type="number" label={e.brushRpm} unit="rpm" min={500} max={1600} step={100} value={d.brushRpm} onChange={(v) => set('brushRpm', Number(v))} />
-                                <InputRow type="number" label={e.vacuum} unit="%" min={40} max={100} step={10} value={d.vacuumSpeed} onChange={(v) => set('vacuumSpeed', Number(v))} />
-                                <InputRow type="number" label={e.sideBrush} unit="mW" min={500} max={1500} step={100} value={d.sideBrushPower} onChange={(v) => set('sideBrushPower', Number(v))} />
-                            </Card>
-
                             <Card icon={<Settings2 />} title={e.device}>
                                 <InputRow label={e.hostname} value={d.hostname} onChange={(v) => set('hostname', v)} mono />
                                 <SelectRow label={e.timezone} value={d.tz} onChange={(v) => set('tz', v)}
@@ -255,7 +210,6 @@ export function EspSettings() {
                                     <InputRow type="time" label={e.autoRestartAt} value={toTime(d.autoRestartHour, d.autoRestartMinute)}
                                         onChange={(v) => { const [hh, mm] = fromTime(v); setDraft((x) => x && { ...x, autoRestartHour: hh, autoRestartMinute: mm }) }} />
                                 )}
-                                <Switch label={e.restartBeforeClean} checked={d.restartBeforeClean} onChange={(v) => set('restartBeforeClean', v)} />
                             </Card>
                         </>}
 

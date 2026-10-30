@@ -32,7 +32,6 @@ ALLOWED: set[tuple[str, str]] = {
     ("GET", "wifi/status"),
     ("GET", "charger"), ("GET", "analog"), ("GET", "warranty"),
     ("POST", "battery/new"),
-    ("POST", "notifications/test"),
     ("POST", "clear-errors"),
 }
 
