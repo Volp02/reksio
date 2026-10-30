@@ -5,6 +5,9 @@
 .ov-name { flex: 1; font-size: var(--fs-h2); font-weight: 600; }
 .ov-ctrls { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .ov-ctrls .btn { padding: 0 var(--s-3); }
+.ov-modes { display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-5); }
+.ov-modes .field { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); }
+.ov-modes .field-l { font-size: var(--fs-small); color: var(--text-2); font-weight: 500; }
 
 .ov-problem { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-3); border-radius: var(--r-m); font-weight: 500; }
 .ov-problem .lucide { width: 16px; height: 16px; flex: none; }
@@ -51,6 +54,7 @@
     .ov-battery { order: 2; }
     .ov-map { order: 3; }
     .ov-runs { order: 4; }
+    .ov-diag { order: 5; }
 }
 @container app (max-width: 640px) {
     .ov-status { display: none; }

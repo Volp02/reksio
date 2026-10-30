@@ -104,3 +104,16 @@
     background: var(--text); color: var(--bg); padding: var(--s-3) var(--s-4); border-radius: var(--r-m);
     box-shadow: var(--shadow-2); font-weight: 500; overflow-wrap: anywhere;
 }
+
+/* Schalter */
+.switch { display: flex; align-items: center; gap: var(--s-4); min-height: var(--touch); cursor: pointer; position: relative; }
+.switch-l { flex: 1; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch-t { flex: none; width: 40px; height: 24px; border-radius: var(--r-full); background: var(--surface-3); border: 1px solid var(--border-strong); position: relative; }
+.switch-t::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-1); }
+.switch input:checked + .switch-t { background: var(--accent); border-color: var(--accent); }
+.switch input:checked + .switch-t::after { left: 18px; background: var(--on-accent); }
+.switch input:focus-visible + .switch-t { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+    .switch-t, .switch-t::after { transition: background-color var(--t-fast) var(--ease), left var(--t-fast) var(--ease); }
+}

@@ -96,6 +96,17 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
     )
 }
 
+/** Schalter mit Beschriftung links; ganze Zeile klickbar */
+export function Switch({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+    return (
+        <label className="switch">
+            <Label className="switch-l">{label}</Label>
+            <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+            <span className="switch-t" aria-hidden />
+        </label>
+    )
+}
+
 export function Empty({ icon, label, action }: { icon?: ReactNode; label: string; action?: ReactNode }) {
     return <div className="empty">{icon}<Label className="empty-l">{label}</Label>{action}</div>
 }

@@ -12,15 +12,21 @@ import { fmtDuration, fmtNumber, fmtTime, fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
 import { Legend } from '../map/Legend'
 import { BatteryChart } from './BatteryChart'
-import { Button, Card, Confirm, Empty, KV, Label, Pill, Toast, Value } from '../ui/ui'
-import { cleaningPrefs } from './Settings'
+import { Button, Card, Confirm, Empty, KV, Label, Pill, Segmented, Toast, Value } from '../ui/ui'
+import { getPrefs, setPrefs, usePrefs } from '../state/prefs'
+import { DiagnosticsCard } from './Diagnostics'
 import './overview.css'
 
 export function Overview() {
+    const prefs = usePrefs()
     return (
         <div className="ov">
             <div className="ov-col ov-col--main"><MapCard /><RunsCard /></div>
-            <div className="ov-col ov-col--side"><ControlCard /><BatteryCard /></div>
+            <div className="ov-col ov-col--side">
+                <ControlCard />
+                <BatteryCard />
+                {prefs.diagnostics && <DiagnosticsCard className="ov-diag" />}
+            </div>
         </div>
     )
 }
@@ -41,7 +47,7 @@ function ControlCard() {
         ? { label: t.actions.pause, icon: <Pause />, run: () => gen3.pause(s.serial!) }
         : av?.resume
             ? { label: t.actions.resume, icon: <Play />, run: () => gen3.resume(s.serial!) }
-            : { label: t.actions.start, icon: <Play />, run: () => { const p = cleaningPrefs(); return gen3.startHouse(s.serial!, p.mode, p.navigation) }, disabled: !av?.start }
+            : { label: t.actions.start, icon: <Play />, run: () => { const p = getPrefs(); return gen3.startHouse(s.serial!, p.mode, p.navigation) }, disabled: !av?.start }
 
     const send = async (cmd: Cmd, run: () => Promise<unknown>) => {
         setBusy(cmd)
@@ -55,6 +61,7 @@ function ControlCard() {
         }
     }
 
+    const prefs = usePrefs()
     const problem = r?.error ? problemText(t, r.error) : r?.alert ? problemText(t, r.alert) : undefined
     const since = isCleaning(r) ? cleaningSince(s.history) : undefined
     const mode = r && isCleaning(r) ? modeLabel(t, r.cleaning.category, r.cleaning.mode, r.cleaning.navigationMode) : undefined
@@ -81,6 +88,20 @@ function ControlCard() {
                     loading={busy === 'dock'} disabled={!av?.goToBase || (!!busy && busy !== 'dock')}
                     onClick={() => send('dock', () => gen3.sendToBase(s.serial!))} />
             </div>
+            {!mode && (
+                <div className="ov-modes">
+                    <div className="field"><Label className="field-l">{t.settings.power}</Label>
+                        <Segmented<string> label={t.settings.power} value={String(prefs.mode)} onChange={(v) => setPrefs({ mode: Number(v) })} options={[
+                            { value: String(CleaningMode.ECO), label: t.overview.eco }, { value: String(CleaningMode.TURBO), label: t.overview.turbo }]} />
+                    </div>
+                    <div className="field"><Label className="field-l">{t.settings.navigation}</Label>
+                        <Segmented<string> label={t.settings.navigation} value={String(prefs.navigation)} onChange={(v) => setPrefs({ navigation: Number(v) })} options={[
+                            { value: String(NavigationMode.NORMAL), label: t.overview.normalNav },
+                            { value: String(NavigationMode.EXTRA_CARE), label: t.overview.extraCare },
+                            { value: String(NavigationMode.DEEP), label: t.overview.deep }]} />
+                    </div>
+                </div>
+            )}
             {(mode || since) && (
                 <KV rows={[
                     ...(mode ? [[t.overview.mode, <Label key="m">{mode}</Label>] as [string, ReactNode]] : []),

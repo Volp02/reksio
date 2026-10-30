@@ -214,7 +214,9 @@ mit Icon, Titel (H3) und rechts Status-Pill oder Aktion.
 auf allen Plattformen, umschaltbar oben und in den Einstellungen (System · Hell · Dunkel).
 
 **Handy:** Die Bedienleiste für Reksio (Start/Pause, Stopp, Zur Basis) sitzt auf der Übersicht oben im ersten Bildschirm, nicht
-in einem Menü. Motorwerte stehen unter Einstellungen → Diagnose, nicht auf der Übersicht.
+in einem Menü. Saugstufe und Fahrweise stehen auf der Steuerungskarte (nur im Ruhezustand, gelten für den nächsten Start;
+während der Reinigung steht dort der laufende Modus). Die Diagnose-Karte (Motoren, Räder, ESP-Zustand) steht unter
+Einstellungen und auf Wunsch zusätzlich auf der Übersicht (Schalter „Diagnose anzeigen“).
 
 ## 12. Muster für Reksio
 
