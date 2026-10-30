@@ -169,7 +169,9 @@ Scrollleisten: 12 px Trefferfläche, Daumen 6 px sichtbar, `text-3` 40 % (Hover 
 
 120 ms (Hover), 200 ms (Menü, Dialog, Ein-/Ausblenden), 320 ms (Sheet); Easing `cubic-bezier(.2,.7,.2,1)`.
 Übergänge nur bei `prefers-reduced-motion: no-preference`. Live-Werte ändern sich ohne Animation. Die Position von Reksio
-auf der Karte springt von Messung zu Messung (alle 2 s), ohne Interpolation, damit nichts angezeigt wird, was nicht gemessen ist.
+auf der Karte gleitet bei jeder Messung (etwa 1 s) linear in 1 s von der angezeigten zur neuen Stelle, die Blickrichtung
+dreht auf dem kürzesten Weg mit, die Spur endet an der gleitenden Position. Sprünge über 2,5 m (z. B. nach einem
+Funkloch des ESP) und `prefers-reduced-motion: reduce` springen ohne Animation.
 
 ## 8. Dichte
 

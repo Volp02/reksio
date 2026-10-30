@@ -6,9 +6,27 @@ import { useTheme } from '../ui/theme'
 import { IconButton } from '../ui/ui'
 import { BITMAP_SCALE, drawDots, mapColors, pickLevel, renderBitmap, toGrid, type Colors, type Grid } from './render'
 import type { Live } from './useLive'
+import type { MapPose } from './pose'
 import './map.css'
 
 const MAX_SCALE = 24 // CSS-Pixel pro Kartenzelle
+// Reksio gleitet zur neuen Position statt zu springen; Dauer ≈ Abfragetakt (1 s), damit es durchgehend wirkt
+const GLIDE_MS = 1000
+const SNAP_PX = 64 // Kartenpixel (≈ 2,5 m): größere Sprünge (z. B. nach Funkloch) nicht animieren
+
+interface Glide { from?: MapPose; to?: MapPose; t0: number }
+
+function glidePose(a: Glide, now: number): MapPose | undefined {
+    if (!a.to) return undefined
+    if (!a.from) return a.to
+    const k = Math.min(1, (now - a.t0) / GLIDE_MS)
+    const dh = Math.atan2(Math.sin(a.to.heading - a.from.heading), Math.cos(a.to.heading - a.from.heading))
+    return {
+        px: a.from.px + (a.to.px - a.from.px) * k,
+        py: a.from.py + (a.to.py - a.from.py) * k,
+        heading: a.from.heading + dh * k,
+    }
+}
 
 interface View { scale: number; x: number; y: number }
 
@@ -32,6 +50,7 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
     const view = useRef<View>({ scale: 1, x: 0, y: 0 })
     const fitted = useRef(true)
     const frame = useRef(0)
+    const glide = useRef<Glide>({ t0: 0 })
 
     const grid = useMemo<Grid>(() => toGrid(data, run), [data, run])
     // Farben und Punktebild nur bei neuer Karte oder neuem Thema neu erzeugen
@@ -75,10 +94,14 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
 
             drawBoundaries(g, boundaries, grid, scale, x, y)
 
-            // Spur der laufenden Fahrt
+            // aktuelle (gleitende) Position von Reksio
+            const robot = live?.robot && (glidePose(glide.current, performance.now()) ?? live.robot)
+
+            // Spur der laufenden Fahrt; das letzte Stück endet an der gleitenden Position
             if (live?.trail.length) {
                 g.beginPath()
-                live.trail.forEach((p, i) => (i ? g.lineTo(x + p.px * scale, y + p.py * scale) : g.moveTo(x + p.px * scale, y + p.py * scale)))
+                const pts = robot ? [...live.trail.slice(0, -1), robot] : live.trail
+                pts.forEach((p, i) => (i ? g.lineTo(x + p.px * scale, y + p.py * scale) : g.moveTo(x + p.px * scale, y + p.py * scale)))
                 g.strokeStyle = colors.path
                 g.globalAlpha = 0.7
                 g.lineWidth = Math.max(2, Math.min(6, scale * 0.6))
@@ -101,8 +124,9 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             }
 
             // Reksio: Punkt mit Blickrichtung, hohl wenn die Position veraltet ist
-            if (live?.robot) {
-                const { px, py, heading, stale } = live.robot
+            if (live?.robot && robot) {
+                const { stale } = live.robot
+                const { px, py, heading } = robot
                 const rx = x + px * scale, ry = y + py * scale
                 const r = Math.max(7, Math.min(14, scale * 4.2)) // D7 ≈ 33 cm ≈ 8,4 Zellen
                 g.lineWidth = 2.5
@@ -174,6 +198,27 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
     }, [fit, redraw])
 
     useEffect(() => { fit() }, [grid, fit])
+
+    // neue Live-Position: von der gerade angezeigten Stelle aus hingleiten
+    const target = live?.robot
+    useEffect(() => {
+        if (!target) { glide.current = { t0: 0 }; return }
+        const g = glide.current
+        if (g.to && g.to.px === target.px && g.to.py === target.py && g.to.heading === target.heading) return
+        const now = performance.now()
+        const cur = glidePose(g, now)
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        const snap = !cur || reduce || Math.hypot(target.px - cur.px, target.py - cur.py) > SNAP_PX
+        glide.current = { from: snap ? undefined : cur, to: { px: target.px, py: target.py, heading: target.heading }, t0: now }
+        if (snap) return
+        let raf = 0
+        const tick = () => {
+            redraw()
+            if (performance.now() - now < GLIDE_MS) raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(raf)
+    }, [target?.px, target?.py, target?.heading, redraw])
     useEffect(() => { draw() }, [draw])
 
     // Mausrad und Gesten
