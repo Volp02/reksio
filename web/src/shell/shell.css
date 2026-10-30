@@ -1,0 +1,92 @@
+/* Shell: Seitenleiste (Desktop), Icon-Leiste (Tablet), Top-Bar + Bottom-Nav (Handy). DESIGN.md §11 */
+
+#root { container: app / inline-size; }
+
+.app {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-areas: "side main";
+    min-height: 100dvh;
+}
+
+.side {
+    grid-area: side; position: sticky; top: 0; height: 100dvh;
+    display: flex; flex-direction: column; gap: var(--s-1);
+    padding: var(--s-4) var(--s-3); border-right: 1px solid var(--border); background: var(--bg);
+}
+.brand { display: flex; align-items: center; gap: var(--s-3); padding: 6px 8px var(--s-4); color: var(--text); font-weight: 600; font-size: 17px; }
+.logo { width: 32px; height: 32px; flex: none; border-radius: var(--r-s); background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
+.logo .lucide { width: 20px; height: 20px; stroke-width: 1.9; }
+.side-nav { display: flex; flex-direction: column; gap: var(--s-1); }
+.nav-item {
+    display: flex; align-items: center; gap: var(--s-3); height: 40px; padding: 0 12px;
+    border-radius: var(--r-m); color: var(--text-2); font-weight: 500;
+}
+.nav-item .lucide { width: 20px; height: 20px; flex: none; stroke-width: 1.75; }
+.nav-item:hover { background: var(--surface-2); }
+.nav-item[aria-current="page"] { background: var(--accent-soft); color: var(--accent-text); }
+.side-foot { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); padding: var(--s-3) 8px 4px; border-top: 1px solid var(--border); }
+.side-esp { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-small); color: var(--text-2); max-width: 100%; }
+.side-esp .lucide { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
+.side-esp.is-stale { color: var(--text-3); }
+
+.topbar { display: none; }
+.bnav { display: none; }
+
+.main { grid-area: main; padding: var(--s-6) var(--s-7) var(--s-8); display: flex; flex-direction: column; gap: var(--s-5); max-width: 1440px; width: 100%; }
+.ph { display: flex; align-items: center; gap: var(--s-2); min-height: 40px; }
+.ph-t { flex: 1; font-size: var(--fs-h1); font-weight: 600; }
+.ph-asof { margin-right: var(--s-1); white-space: nowrap; }
+.ph-actions { display: flex; gap: var(--s-1); margin-left: var(--s-2); }
+.btn.is-cur { background: var(--accent-soft); color: var(--accent-text); }
+.btn .lucide, a.btn .lucide { width: 18px; height: 18px; }
+.banner { background: var(--danger-soft); color: var(--danger-text); border-radius: var(--r-m); padding: var(--s-3) var(--s-4); font-weight: 500; }
+
+/* Tablet: schmale Leiste nur mit Icons */
+@container app (max-width: 900px) {
+    .app { grid-template-columns: 72px minmax(0, 1fr); }
+    .side { padding: var(--s-4) var(--s-2); align-items: center; }
+    .side .brand { padding: 4px 0 var(--s-4); }
+    .brand-n, .nav-l { display: none; }
+    .nav-item { width: 48px; justify-content: center; padding: 0; }
+    .side-foot { align-items: center; padding: var(--s-3) 0 4px; }
+    .side-foot .pill { padding: 0 8px; }
+    .side-foot .pill .lbl, .side-esp .lbl { display: none; }
+    .main { padding: var(--s-5) var(--s-5) var(--s-7); }
+}
+
+/* Handy: Top-Bar mit Status, Einstellungen oben, 4 Einträge unten */
+@container app (max-width: 640px) {
+    .app {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto 1fr auto;
+        grid-template-areas: "top" "main" "bnav";
+    }
+    .side { display: none; }
+    .topbar {
+        grid-area: top; display: flex; align-items: center; gap: var(--s-2);
+        position: sticky; top: 0; z-index: var(--z-sticky);
+        padding: 10px var(--s-3) 10px var(--s-4); padding-top: max(10px, env(safe-area-inset-top));
+        background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .topbar .brand { flex: 1 1 auto; padding: 0; gap: var(--s-2); }
+    .topbar .brand-n { display: block; }
+    .topbar .pill { flex: 0 1 auto; }
+    .main { padding: var(--s-4) var(--s-4) var(--s-6); gap: var(--s-4); }
+    .ph-actions, .ph-refresh, .ph-asof { display: none; }
+    .ph { min-height: 0; }
+    .app[data-route="overview"] .ph { display: none; }
+    .ph-t { font-size: var(--fs-h2); }
+    .bnav {
+        grid-area: bnav; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+        position: sticky; bottom: 0; z-index: var(--z-sticky);
+        background: var(--surface); border-top: 1px solid var(--border);
+        padding: 6px 4px max(8px, env(safe-area-inset-bottom));
+    }
+    .bnav a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px; min-height: var(--touch); color: var(--text-3); font-size: var(--fs-overline); font-weight: 500; }
+    .bnav-i { display: grid; place-items: center; width: 56px; height: 30px; border-radius: var(--r-full); }
+    .bnav-i .lucide { width: 20px; height: 20px; stroke-width: 1.75; }
+    .bnav-l { max-width: 100%; }
+    .bnav a[aria-current="page"] { color: var(--accent-text); }
+    .bnav a[aria-current="page"] .bnav-i { background: var(--accent-soft); }
+}

@@ -1,0 +1,152 @@
+/* Quelle der Wahrheit für Werte, beschrieben in docs/DESIGN.md §2–§8 */
+
+:root,
+[data-theme="light"] {
+    color-scheme: light;
+    --page: #eaebee;
+    --bg: #f9fafc;
+    --surface: #ffffff;
+    --surface-2: #f3f4f7;
+    --surface-3: #e9ebef;
+    --border: #e4e6ea;
+    --border-strong: #ced1d6;
+    --text: #161b24;
+    --text-2: #505561;
+    --text-3: #676c75;
+
+    --accent: #127a7d;
+    --accent-soft: #e1f3f2;
+    --accent-text: #0b6164;
+    --on-accent: #ffffff;
+
+    --ok: #389560;
+    --ok-soft: #e4f0e8;
+    --ok-text: #306d4e;
+    --warn: #d49838;
+    --warn-soft: #f8edde;
+    --warn-text: #775c38;
+    --danger: #cb4644;
+    --danger-soft: #fce8e6;
+    --danger-text: #9b3e3e;
+    --info: #4188b6;
+    --info-soft: #e6eff6;
+    --info-text: #356486;
+
+    --cat-1: #2a78d6;
+    --cat-2: #eb6834;
+    --cat-3: #1baf7a;
+    --cat-4: #eda100;
+    --cat-5: #e87ba4;
+    --cat-6: #008300;
+
+    --map-unknown: var(--surface-3);
+    --map-free: var(--surface);
+    --map-wall: var(--text-2);
+
+    --scrim: rgb(16 24 40 / 0.4);
+    --shadow-1: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.04);
+    --shadow-2: 0 4px 12px rgb(16 24 40 / 0.08), 0 2px 4px rgb(16 24 40 / 0.04);
+    --shadow-3: 0 16px 40px rgb(16 24 40 / 0.16), 0 4px 10px rgb(16 24 40 / 0.06);
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #06070b;
+    --bg: #0f1217;
+    --surface: #161920;
+    --surface-2: #1e2229;
+    --surface-3: #262a32;
+    --border: #2a2e36;
+    --border-strong: #41454e;
+    --text: #edeef2;
+    --text-2: #b1b4bb;
+    --text-3: #8f929a;
+
+    --accent: #5fc0bd;
+    --accent-soft: #183334;
+    --accent-text: #93dbd8;
+    --on-accent: #0f1217;
+
+    --ok-soft: #1c2929;
+    --ok-text: #74b08a;
+    --warn-soft: #342e29;
+    --warn-text: #e0bf93;
+    --danger-soft: #2c2126;
+    --danger-text: #d9746e;
+    --info-soft: #1d2631;
+    --info-text: #77a6c9;
+
+    --cat-1: #3987e5;
+    --cat-2: #d95926;
+    --cat-3: #199e70;
+    --cat-4: #c98500;
+    --cat-5: #d55181;
+
+    --map-unknown: var(--bg);
+    --map-free: var(--surface-2);
+
+    --scrim: rgb(0 0 0 / 0.6);
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
+    --shadow-2: 0 6px 16px rgb(0 0 0 / 0.45), 0 2px 4px rgb(0 0 0 / 0.3);
+    --shadow-3: 0 20px 48px rgb(0 0 0 / 0.55), 0 6px 12px rgb(0 0 0 / 0.35);
+}
+
+[data-contrast="more"] {
+    --border: var(--border-strong);
+    --text-2: var(--text);
+    --text-3: color-mix(in oklab, var(--text) 80%, var(--surface));
+}
+
+:root {
+    --d: 1;
+    --s-1: calc(4px * var(--d));
+    --s-2: calc(8px * var(--d));
+    --s-3: calc(12px * var(--d));
+    --s-4: calc(16px * var(--d));
+    --s-5: calc(20px * var(--d));
+    --s-6: calc(24px * var(--d));
+    --s-7: calc(32px * var(--d));
+    --s-8: calc(40px * var(--d));
+
+    --r-s: 8px;
+    --r-m: 12px;
+    --r-l: 18px;
+    --r-xl: 26px;
+    --r-full: 999px;
+
+    --font-sans: "Outfit Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono Variable", ui-monospace, Menlo, Consolas, monospace;
+    --fs-display: 34px;
+    --fs-h1: 26px;
+    --fs-h2: 19px;
+    --fs-h3: 16px;
+    --fs-body: 15px;
+    --fs-small: 13px;
+    --fs-caption: 12px;
+    --fs-overline: 11px;
+
+    --h-btn: calc(38px * var(--d) + 2px);
+    --h-btn-s: calc(30px * var(--d) + 2px);
+    --touch: 44px;
+
+    --w-ctl-max: min(100%, 15rem);
+    --w-badge-max: 5ch;
+    --w-menu-max: min(20rem, calc(100vw - 16px));
+
+    --z-sticky: 10;
+    --z-mapctl: 20;
+    --z-dropdown: 40;
+    --z-sheet: 60;
+    --z-dialog: 70;
+    --z-toast: 80;
+
+    --t-fast: 120ms;
+    --t-mid: 200ms;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+[data-density="compact"] {
+    --d: 0.82;
+    --fs-body: 14px;
+    --fs-small: 12.5px;
+}

@@ -1,0 +1,26 @@
+/* Einstellungen */
+.settings { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(26rem, 100%), 1fr)); gap: var(--s-5); align-items: start; }
+.field { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); }
+.field-l { font-size: var(--fs-small); color: var(--text-2); font-weight: 500; }
+
+/* Karte */
+.mappage { display: flex; flex-direction: column; gap: var(--s-4); flex: 1; }
+.mappage-view { position: relative; height: calc(100dvh - 160px); min-height: 320px; border-radius: var(--r-l); overflow: hidden; border: 1px solid var(--border); background: var(--map-unknown); }
+.mappage-view .mapview { border-radius: 0; }
+@container app (max-width: 640px) {
+    .mappage-view { height: calc(100dvh - 210px); }
+}
+
+/* Reinigungen: Liste + Detail, am Handy Detail als eigene Seite */
+.runs { display: grid; grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); gap: var(--s-5); align-items: start; }
+.runs-list { padding-top: var(--s-2); padding-bottom: var(--s-2); }
+.runs .row[aria-current="true"] { color: var(--accent-text); }
+.runs .row[aria-current="true"] .row-s { color: var(--accent-text); }
+.runs-back { display: none; }
+@container app (max-width: 900px) {
+    .runs { grid-template-columns: minmax(0, 1fr); }
+    .runs:not(.has-detail) .runs-detail { display: none; }
+    .runs.has-detail .runs-list { display: none; }
+    .runs-back { display: inline-flex; margin-left: calc(-1 * var(--s-2)); }
+    .runs-detail .card-h > .lucide { display: none; }
+}
