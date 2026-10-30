@@ -73,6 +73,13 @@ MDNS_ENABLED: bool = _get_bool_env("MDNS_ENABLED", True)
 HOST_IP: str = _get_str_env("HOST_IP", "0.0.0.0")
 LOG_LEVEL: str = _get_str_env("LOG_LEVEL", "INFO").upper()
 
+# ESP32 bridge (OpenNeato) on the Gen3 debug port: read-only telemetry + pose
+ESP_HOST: str | None = _get_str_env("ESP_HOST", None)
+ESP_ROBOT: str | None = _get_str_env("ESP_ROBOT", None)  # serial; default: the only Gen3 robot
+ESP_POLL_S: int = _get_int_env("ESP_POLL_S", 10)
+ESP_POSE_POLL_S: int = _get_int_env("ESP_POSE_POLL_S", 2)
+TELEMETRY_RETENTION_DAYS: int = _get_int_env("TELEMETRY_RETENTION_DAYS", 30)
+
 # HA Ingress stuff
 # By config.yaml default for this value will be true, but others not running via HA App it never even has to pass this check
 # SUPERVISOR_TOKEN is injected, should not be set by user

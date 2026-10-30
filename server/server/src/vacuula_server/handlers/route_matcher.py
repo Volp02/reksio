@@ -8,6 +8,7 @@ from typing import Callable, Optional, Tuple, List
 # general
 from .app import get_robots, get_maps, get_map, get_run, post_map, post_robot, get_runs, connect_robot, post_robot_command, get_server_info
 from .events import get_events
+from .telemetry import get_telemetry, get_telemetry_latest, get_poses
 from vacuula_server.handlers.setup import get_cert, get_log, get_log_full
 
 #gen4
@@ -47,6 +48,9 @@ APP_ROUTES: List[Tuple[str, str, Handler]] = [
     ("GET", r"/api/robot/(.+)/maps", get_maps),
     ("GET", r"/api/robot/(.+)/run/(.+)", get_run),
     ("GET", r"/api/robot/(.+)/runs", get_runs),
+    ("GET", r"/api/robot/(.+)/telemetry/latest", get_telemetry_latest),
+    ("GET", r"/api/robot/(.+)/telemetry", get_telemetry),
+    ("GET", r"/api/robot/(.+)/poses", get_poses),
     ("GET", r"/api/robot/(.+)/maps/(.+)/boundaries", gen4.get_boundaries),
     ("GET", r"/api/robot/(.+)/maps/(.+)", get_map),
     ("POST", r"/api/robot/(.+)/maps/(.+)/promote", gen4.post_promote),
