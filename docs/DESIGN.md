@@ -201,16 +201,19 @@ Kontraste nach §3.6 · sichtbarer Fokus (`:focus-visible`) · Tab-Reihenfolge =
 
 | | Desktop / Laptop (> 900 px) | Tablet (641–900 px) | Handy (≤ 640 px) |
 |---|---|---|---|
-| Navigation | Seitenleiste links (Übersicht, Karte, Reinigungen, Zeitplan, Einstellungen) | schmale Seitenleiste (nur Icons, Tooltip) | Leiste unten, 5 Einträge |
-| Kopf | Name „Reksio“, Verbindungs-Pill, Stand, Aktualisieren | wie Desktop | Name + Verbindungs-Pill |
-| Inhalt | Karten im Raster `auto-fill, minmax(min(22rem, 100%), 1fr)`; Karte groß links, Statusspalte rechts | zweispaltig | einspaltig; Hauptinhalt ohne Scrollen sichtbar |
+| Navigation | Seitenleiste links (Übersicht, Karte, Reinigungen, Zeitplan) | schmale Seitenleiste (nur Icons, Tooltip) | Leiste unten, 4 Einträge |
+| Kopf | Seitentitel, Stand, Aktualisieren, Hell/Dunkel, Einstellungen | wie Desktop | Name + Status-Pill, Hell/Dunkel, Einstellungen |
+| Inhalt | zwei Spalten: Karte + Reinigungen links, Steuerung + Akku rechts | einspaltig, Steuerung und Akku zuerst | einspaltig, Steuerung und Akku zuerst |
 | Detail | Panel rechts oder Dialog | Dialog | Vollbildseite mit Zurück |
 
 Seitenaufbau: Titel (H1) · rechts „Stand hh:mm“ + Aktualisieren · darunter Karten. Karte = `surface`, Radius `l`, Kopfzeile
 mit Icon, Titel (H3) und rechts Status-Pill oder Aktion.
 
+**Einstellungen** liegen auf allen Größen oben (Zahnrad neben Hell/Dunkel), nicht in der Navigation. Hell und Dunkel gibt es
+auf allen Plattformen, umschaltbar oben und in den Einstellungen (System · Hell · Dunkel).
+
 **Handy:** Die Bedienleiste für Reksio (Start/Pause, Stopp, Zur Basis) sitzt auf der Übersicht oben im ersten Bildschirm, nicht
-in einem Menü.
+in einem Menü. Motorwerte stehen unter Einstellungen → Diagnose, nicht auf der Übersicht.
 
 ## 12. Muster für Reksio
 
@@ -262,7 +265,7 @@ Lädt Reksio, steht „lädt“ und, wenn bekannt, die Zeit bis voll.
 | Größe | Format DE | Format EN |
 |---|---|---|
 | Akku | `47 %` | `47%` |
-| Spannung, Strom, Temperatur | `14,2 V` · `−1 985 mA` · `25,2 °C` | `14.2 V` · `−1,985 mA` · `25.2 °C` |
+| Spannung, Strom, Temperatur | `14,2 V` · `−1.985 mA` · `25,2 °C` | `14.2 V` · `−1,985 mA` · `25.2 °C` |
 | Fläche, Strecke | `42 m²` · `310 m` | `42 m²` · `310 m` |
 | Dauer | `1 h 12 min` | `1 h 12 min` |
 | Verbrauch | `38 %/h` | `38%/h` |
