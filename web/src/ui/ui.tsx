@@ -107,11 +107,44 @@ export function Switch({ label, checked, onChange }: { label: string; checked: b
     )
 }
 
+/** Beschriftete Zeile mit Eingabe rechts (Text, Zahl, Uhrzeit) */
+export function InputRow({ label, value, onChange, type = 'text', placeholder, unit, min, max, step, mono, invalid }: {
+    label: string; value: string | number; onChange: (v: string) => void; type?: 'text' | 'number' | 'time'
+    placeholder?: string; unit?: string; min?: number; max?: number; step?: number; mono?: boolean; invalid?: boolean
+}) {
+    return (
+        <label className="irow">
+            <Label className="irow-l">{label}</Label>
+            <span className="irow-c">
+                <input className={`input${mono ? ' mono' : ''}`} type={type} value={value} placeholder={placeholder}
+                    min={min} max={max} step={step} aria-invalid={invalid || undefined}
+                    onChange={(e) => onChange(e.target.value)} />
+                {unit && <span className="unit">{unit}</span>}
+            </span>
+        </label>
+    )
+}
+
+export function SelectRow<T extends string | number>({ label, value, options, onChange }:
+    { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+    return (
+        <label className="irow">
+            <Label className="irow-l">{label}</Label>
+            <span className="irow-c">
+                <select className="input" value={String(value)}
+                    onChange={(e) => onChange(options.find((o) => String(o.value) === e.target.value)!.value)}>
+                    {options.map((o) => <option key={String(o.value)} value={String(o.value)}>{o.label}</option>)}
+                </select>
+            </span>
+        </label>
+    )
+}
+
 export function Empty({ icon, label, action }: { icon?: ReactNode; label: string; action?: ReactNode }) {
     return <div className="empty">{icon}<Label className="empty-l">{label}</Label>{action}</div>
 }
 
-/** Bestätigung (nur für Befehle, die eine Reinigung beenden) */
+/** Bestätigung für Befehle mit Folgen (Reinigung beenden, Neustart, …) */
 export function Confirm({ open, title, confirmLabel, cancelLabel, onConfirm, onCancel }:
     { open: boolean; title: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void; onCancel: () => void }) {
     const ref = useRef<HTMLDialogElement>(null)

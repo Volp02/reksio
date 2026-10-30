@@ -10,6 +10,9 @@ import { MapPage } from './pages/MapPage'
 import { Runs } from './pages/Runs'
 import { Schedule } from './pages/Schedule'
 import { Settings } from './pages/Settings'
+import { EspSettings } from './pages/EspSettings'
+import { BatterySettings } from './pages/BatterySettings'
+import { useI18n } from './i18n'
 
 // Hash-Routing: funktioniert ohne Server-Fallback und hinter Präfixen
 function parse(hash: string): { route: Route; arg?: string } {
@@ -19,6 +22,7 @@ function parse(hash: string): { route: Route; arg?: string } {
 }
 
 function App() {
+    const { t } = useI18n()
     const [loc, setLoc] = useState(() => parse(location.hash))
     useEffect(() => {
         const on = () => { setLoc(parse(location.hash)); window.scrollTo(0, 0) }
@@ -26,12 +30,15 @@ function App() {
         return () => window.removeEventListener('hashchange', on)
     }, [])
     return (
-        <Shell route={loc.route}>
+        <Shell route={loc.route} sub={loc.route === 'settings' && (loc.arg === 'esp' || loc.arg === 'battery')
+            ? { title: loc.arg === 'esp' ? t.esp.title : t.bat.title, back: '#/settings' } : undefined}>
             {loc.route === 'overview' && <Overview />}
             {loc.route === 'map' && <MapPage />}
             {loc.route === 'runs' && <Runs selected={loc.arg} />}
             {loc.route === 'schedule' && <Schedule />}
-            {loc.route === 'settings' && <Settings />}
+            {loc.route === 'settings' && !loc.arg && <Settings />}
+            {loc.route === 'settings' && loc.arg === 'esp' && <EspSettings />}
+            {loc.route === 'settings' && loc.arg === 'battery' && <BatterySettings />}
         </Shell>
     )
 }

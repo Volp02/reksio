@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bot, LayoutDashboard, Palette, Server } from 'lucide-react'
+import { BatteryMedium, Bot, ChevronRight, Cpu, LayoutDashboard, Palette, Server, SlidersHorizontal } from 'lucide-react'
 import { gen3 } from '../api/client'
 import type { GeneralInfo } from '../api/types'
 import { useI18n, type Lang } from '../i18n'
@@ -43,6 +43,13 @@ export function Settings() {
 
             <Card icon={<LayoutDashboard />} title={t.nav.overview}>
                 <Switch label={t.settings.showDiagnostics} checked={prefs.diagnostics} onChange={(v) => setPrefs({ diagnostics: v })} />
+            </Card>
+
+            <Card icon={<SlidersHorizontal />} title={t.settings.advanced}>
+                <ul className="rows">
+                    <li><a className="row" href="#/settings/esp"><Cpu className="row-i" /><span className="row-main"><Label className="row-t">{t.esp.title}</Label></span><ChevronRight className="row-i" /></a></li>
+                    <li><a className="row" href="#/settings/battery"><BatteryMedium className="row-i" /><span className="row-main"><Label className="row-t">{t.bat.title}</Label></span><ChevronRight className="row-i" /></a></li>
+                </ul>
             </Card>
 
             <Card icon={<Bot />} title={t.settings.robot}>

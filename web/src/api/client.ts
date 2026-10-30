@@ -37,6 +37,15 @@ export const api = {
         request<T>('POST', `/robot/${serial}/command`, params ? { cmd, params } : { cmd }),
 }
 
+/** ESP32-Bridge (OpenNeato) über den Server */
+export const esp = {
+    config: () => request<{ host: string; online: boolean; last_ok: number | null }>('GET', '/esp'),
+    setHost: (host: string) => request<{ host: string; online: boolean; last_ok: number | null }>('PUT', '/esp', { host }),
+    get: <T>(path: string) => request<T>('GET', `/esp/api/${path}`),
+    put: <T>(path: string, body: unknown) => request<T>('PUT', `/esp/api/${path}`, body),
+    post: <T = unknown>(path: string) => request<T>('POST', `/esp/api/${path}`),
+}
+
 /** Befehle an einen Gen3-Roboter (Cloud-Protokoll, über den Server) */
 export const gen3 = {
     getRobotState: (s: string) => api.command<RobotStateData>(s, 'getRobotState'),

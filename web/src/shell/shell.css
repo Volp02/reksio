@@ -90,3 +90,4 @@
     .bnav a[aria-current="page"] { color: var(--accent-text); }
     .bnav a[aria-current="page"] .bnav-i { background: var(--accent-soft); }
 }
+.ph-back { margin-left: calc(-1 * var(--s-2)); }

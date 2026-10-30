@@ -24,3 +24,21 @@
     .runs-back { display: inline-flex; margin-left: calc(-1 * var(--s-2)); }
     .runs-detail .card-h > .lucide { display: none; }
 }
+
+/* Aktionen unter Formularen, Speichern-Leiste */
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); }
+.row-i { width: 18px; height: 18px; flex: none; color: var(--text-2); stroke-width: 1.75; }
+.savebar {
+    position: sticky; bottom: var(--s-4); z-index: var(--z-sticky); grid-column: 1 / -1;
+    display: flex; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-l); box-shadow: var(--shadow-2);
+}
+.savebar-l { flex: 1; font-weight: 500; }
+@container app (max-width: 640px) { .savebar { bottom: calc(76px + env(safe-area-inset-bottom)); } }
+
+/* ESP-Zeitplan: 7 Tage × 2 Zeiten */
+.sched { display: flex; flex-direction: column; }
+.sched-day { display: flex; align-items: center; gap: var(--s-3); padding: 6px 0; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.sched-d { width: 3rem; font-weight: 500; }
+.sched-slot { display: inline-flex; align-items: center; gap: var(--s-2); }
+.chk { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }

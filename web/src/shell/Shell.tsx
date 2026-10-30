@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bot, CalendarClock, Cpu, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Sun } from 'lucide-react'
+import { Bot, CalendarClock, ChevronLeft, Cpu, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Sun } from 'lucide-react'
 import { useI18n, fill } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
 import { robotStatus } from '../status'
@@ -14,7 +14,8 @@ const ICONS: Record<Route, ReactNode> = {
     overview: <LayoutDashboard />, map: <MapIcon />, runs: <History />, schedule: <CalendarClock />, settings: <Settings />,
 }
 
-export function Shell({ route, children }: { route: Route; children: ReactNode }) {
+/** `sub`: Unterseite (Titel + Zurück), z. B. Einstellungen → ESP */
+export function Shell({ route, sub, children }: { route: Route; sub?: { title: string; back: string }; children: ReactNode }) {
     const { t, locale } = useI18n()
     const { resolved, toggle } = useTheme()
     const store = useStore()
@@ -22,7 +23,7 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
     const tz = store.server?.timezone
     const asOf = Math.max(store.robotAt ?? 0, store.telemetry?.ts ?? 0)
     const espFresh = isFresh(store.telemetry?.ts, store.now, TELEMETRY_STALE_S)
-    const title = t.nav[route]
+    const title = sub?.title ?? t.nav[route]
 
     const themeBtn = (
         <IconButton icon={resolved === 'dark' ? <Sun /> : <Moon />} label={resolved === 'dark' ? t.common.toLight : t.common.toDark} onClick={toggle} />
@@ -64,6 +65,7 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
 
             <main className="main">
                 <div className="ph">
+                    {sub && <a href={sub.back} className="btn btn--ghost btn--m btn--icon ph-back" aria-label={t.nav.back} title={t.nav.back}><ChevronLeft /></a>}
                     <h1 className="ph-t"><Label>{title}</Label></h1>
                     {asOf > 0 && <span className="meta ph-asof">{fill(t.common.asOf, { time: fmtTime(locale, tz, asOf) })}</span>}
                     <IconButton size="s" icon={<RefreshCw />} label={t.common.refresh} onClick={store.refresh} className="ph-refresh" />
