@@ -59,10 +59,34 @@ px = ox + s * ( cos(phi) * x + sin(phi) * y )
 py = oy + s * ( sin(phi) * x - cos(phi) * y )
 ```
 
+## Ergebnis (30.10.2026): feste Umrechnung auf die gespeicherte Karte
+
+Gegenprobe mit der ESP-History (OpenNeato `/api/history/<datei>`, Pose alle 2 s, ganze Fahrt):
+
+| Fahrt (ESP-Session) | gegen | Drehung | Ursprung (px) | Fehler |
+|---|---|---|---|---|
+| 30.10. 00:12 (`1793315553`), aus ihr entstand die Karte „OG“ | Run-Karte `2026-10-29T23:12:26Z` | 0,5° | (202,8, 166,2) | 0,01 px |
+| 30.10. 00:12 | Floor-Karte „OG“ | 0,0° | (201,5, 166,8) | 0,01 px |
+| 30.10. 18:01 (`1793379669`), Reinigung mit Karte „OG“ | Floor-Karte „OG“ | −1,0° | (202,2, 165,6) | 0,01 px |
+| 30.10. 18:01 | eigene Run-Karte `2026-10-30T17:00:43Z` | 1,0° | (211,6, 164,8) | 0,07 px |
+
+Freier Maßstab gegen „OG“: 25,0 px/m. Bei festem Ursprung steigt der Fehler bei ±3° auf das 2- bis 5-fache, bei ±1 px/m auf das 3- bis 5-fache.
+
+**Folgerung:** Die Pose (Ursprung = Basis beim Abdocken) passt mit einer festen Formel auf jede Karte, die beim Reinigen
+mit derselben Basis entsteht bzw. verwendet wird. Die Drehung von 108° beim Lauf `2026-10-29T22:16:29Z` war ein
+Ausreißer (nur 15 Minuten Daten, eigene Erkundungskarte).
+
+```
+px = dock.pixel_x + 10,2 + 25,5 · x        (x, y in Metern, Theta in Grad)
+py = dock.pixel_y −  2,3 − 25,5 · y        Blickrichtung im Bild: (cos Theta, −sin Theta)
+```
+
+Umgesetzt in `web/src/map/pose.ts`. Prüfen mit:
+
+```bash
+python3 -I tools/fit-pose.py <esp-session>.jsonl <vacuula-map>.json --phi-step 5 --scale 25.5
+```
+
 ## Offen
 
-- Gilt eine feste Drehung für die **Persistent Map** (Floor-Map, auf der Vacuula live zeichnen würde)? Dazu braucht es
-  einen Lauf mit Pose-Log, bei dem der Roboter auf der gespeicherten Karte lokalisiert.
-  OpenNeato zeichnet die Smooth-Pose in der Cleaning-History selbst auf (`/api/history`), der Pose-Logger ist dafür
-  nicht nötig.
-- Falls die Drehung nicht fest ist: Live-Ansicht muss sie während der Fahrt aus Spur und freier Fläche der Floor-Map schätzen.
+- Neue Erkundung (neue Karte) oder verschobene Basis: Formel mit `fit-pose.py` gegen die neue Karte prüfen.

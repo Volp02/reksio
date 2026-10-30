@@ -33,13 +33,19 @@ def load_run_map(path):
     for value, count in m["rle"]:
         cells.extend([value] * count)
     assert len(cells) == w * h, "RLE passt nicht zur Kartengröße"
-    return w, h, cells
+    return w, h, cells, m.get("map_type"), m.get("dock")
 
 
 def load_poses(path, start, end):
     poses = []
     for line in open(path):
         e = json.loads(line)
+        if "x" in e and "t" in e:
+            # ESP-History (OpenNeato /api/history/<datei>): nur Fahrt, Zeit relativ zum Roboter
+            poses.append((e["ts"], e["x"], e["y"], e["t"], "ST_F"))
+            continue
+        if "ts" not in e or "GetRobotPos Smooth" not in e:
+            continue
         t = datetime.fromtimestamp(e["ts"]).strftime("%H:%M:%S")
         if t < start or (end and t > end):
             continue
@@ -107,17 +113,24 @@ def main():
     p.add_argument("runmap")
     p.add_argument("--start", default="00:00:00", help="Ortszeit HH:MM:SS, ab Abdocken")
     p.add_argument("--end", help="Ortszeit HH:MM:SS")
+    p.add_argument("--phi-step", type=int, default=90, help="Schrittweite der groben Drehungssuche in Grad (Default 90)")
     p.add_argument("--scale", type=float, help="Maßstab in px/m festhalten (bei kurzen Logs)")
     p.add_argument("--svg", help="Kontrollbild: Spur (grau) + transformierte Posen (rot)")
     args = p.parse_args()
 
-    w, h, cells = load_run_map(args.runmap)
+    w, h, cells, map_type, dock_meta = load_run_map(args.runmap)
     values = sorted(set(cells))
-    print(f"Karte {w}x{h}, Pixelwerte {values}")
-    path_mask = [v not in DOCK_VALUES and v != BACKGROUND for v in cells]
-    dock = [(i % w, i // w) for i, v in enumerate(cells) if v in DOCK_VALUES]
-    dx = sum(x for x, _ in dock) / len(dock) if dock else w / 2
-    dy = sum(y for _, y in dock) / len(dock) if dock else h / 2
+    print(f"Karte {w}x{h} ({map_type}), Pixelwerte {values}")
+    if map_type == "floor":
+        # Bodenkarte: Posen müssen auf freier Fläche liegen
+        path_mask = [v == 1 for v in cells]
+        dock = []
+        dx, dy = (dock_meta["pixel_x"], dock_meta["pixel_y"]) if dock_meta else (w / 2, h / 2)
+    else:
+        path_mask = [v not in DOCK_VALUES and v != BACKGROUND for v in cells]
+        dock = [(i % w, i // w) for i, v in enumerate(cells) if v in DOCK_VALUES]
+        dx = sum(x for x, _ in dock) / len(dock) if dock else w / 2
+        dy = sum(y for _, y in dock) / len(dock) if dock else h / 2
     print(f"Dock-Marker: {len(dock)} px, Mitte ({dx:.1f}, {dy:.1f}), Spur: {sum(path_mask)} px")
 
     poses = load_poses(args.pose, args.start, args.end)
@@ -130,7 +143,7 @@ def main():
     # 1) grob: 8 Ausrichtungen x Maßstab, Ursprung = Dock-Mitte
     best = None
     for flip in (False, True):
-        for phi in range(0, 360, 90):
+        for phi in range(0, 360, args.phi_step):
             rot = matrix(phi, flip)
             for s10 in ([round(args.scale * 10)] if args.scale else range(80, 600, 5)):
                 s = args.scale or s10 / 10
