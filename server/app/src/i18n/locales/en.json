@@ -166,7 +166,14 @@
         "drawHint": "Drawing a line makes a no-go line; using the polygon button to connect the cursor with the first point makes a zone.",
         "promote": "Use map",
         "demote": "Stop using map",
-        "gen4UpdateBugHint": "NOTE: modifying maps, zones, or lines may disable affected schedules. This is something that happens on the robot firmware, and we are looking into a workaround"
+        "gen4UpdateBugHint": "NOTE: modifying maps, zones, or lines may disable affected schedules. This is something that happens on the robot firmware, and we are looking into a workaround",
+        "saveFailed": "The robot did not save the zones.",
+        "reload": "Reload",
+        "boundaryError": {
+            "tooFewPoints": "Too few points.",
+            "selfIntersecting": "The edges cross each other.",
+            "tooSmall": "The zone is too small."
+        }
     },
     "settings": {
         "serial": "Serial nr: {{serial}}",

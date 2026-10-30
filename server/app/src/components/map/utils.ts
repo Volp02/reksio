@@ -156,3 +156,88 @@ export async function getAllGen3MapsWithZones(
         }),
     )
 }
+
+function isInsidePolygon([x, y]: Point, vertices: Point[]): boolean {
+    let inside = false
+    for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+        const [xi, yi] = vertices[i]
+        const [xj, yj] = vertices[j]
+        if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside
+    }
+    return inside
+}
+
+function distanceToSegment([px, py]: Point, [ax, ay]: Point, [bx, by]: Point): number {
+    const dx = bx - ax
+    const dy = by - ay
+    const len2 = dx * dx + dy * dy
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2))
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+}
+
+// Point that is guaranteed to lie inside the polygon. The vertex average can fall
+// outside of concave (L/U-shaped) zones, so fall back to the grid point that is
+// furthest away from all edges.
+export function calcInteriorPoint(vertices: Point[]): Point {
+    const centroid = calcRelevancy(vertices)
+    if (isInsidePolygon(centroid, vertices)) return centroid
+
+    const xs = vertices.map(v => v[0])
+    const ys = vertices.map(v => v[1])
+    const minX = Math.min(...xs)
+    const minY = Math.min(...ys)
+    const w = Math.max(...xs) - minX
+    const h = Math.max(...ys) - minY
+    const steps = 40
+    let best: Point = centroid
+    let bestDistance = -1
+    for (let i = 0; i < steps; i++) {
+        for (let j = 0; j < steps; j++) {
+            const p: Point = [minX + w * (i + 0.5) / steps, minY + h * (j + 0.5) / steps]
+            if (!isInsidePolygon(p, vertices)) continue
+            let d = Infinity
+            for (let k = 0, l = vertices.length - 1; k < vertices.length; l = k++) {
+                d = Math.min(d, distanceToSegment(p, vertices[l], vertices[k]))
+            }
+            if (d > bestDistance) {
+                bestDistance = d
+                best = p
+            }
+        }
+    }
+    return best
+}
+
+function segmentsIntersect(a: Point, b: Point, c: Point, d: Point): boolean {
+    const cross = (p: Point, q: Point, r: Point) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    const d1 = cross(c, d, a)
+    const d2 = cross(c, d, b)
+    const d3 = cross(a, b, c)
+    const d4 = cross(a, b, d)
+    return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0)) && d1 !== 0 && d2 !== 0 && d3 !== 0 && d4 !== 0
+}
+
+function polygonArea(vertices: Point[]): number {
+    let area = 0
+    for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+        area += (vertices[j][0] + vertices[i][0]) * (vertices[j][1] - vertices[i][1])
+    }
+    return Math.abs(area / 2)
+}
+
+export type BoundaryError = 'tooFewPoints' | 'selfIntersecting' | 'tooSmall'
+
+// Reject shapes the robot can't handle before they are sent.
+export function validateBoundary(vertices: Point[], closed: boolean): BoundaryError | undefined {
+    if (vertices.length < (closed ? 3 : 2)) return 'tooFewPoints'
+    if (!closed) return undefined
+    const n = vertices.length
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 2; j < n; j++) {
+            if (i === 0 && j === n - 1) continue // adjacent via the closing edge
+            if (segmentsIntersect(vertices[i], vertices[(i + 1) % n], vertices[j], vertices[(j + 1) % n])) return 'selfIntersecting'
+        }
+    }
+    if (polygonArea(vertices) < 1e-5) return 'tooSmall'
+    return undefined
+}

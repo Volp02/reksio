@@ -286,3 +286,14 @@
         color: $accent;
     }
 }
+.error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: var(--err-bg);
+    color: var(--err-text);
+}

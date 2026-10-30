@@ -19,11 +19,11 @@ import i18n from '../../i18n'
 import { useGetPromotedFloorplan } from '../../utils/floormaps'
 import type { NoGoLine, Point, UseState, Zone } from '../../components/map/types'
 import { drawZones, drawNoGoLines, drawBase, drawCrosshair, drawInProgressPolyline, onDockImageReady } from '../../components/map/drawingFunctions'
-import { calcRelevancy, upsertPreserveOrder } from '../../components/map/utils'
+import { calcInteriorPoint, upsertPreserveOrder, validateBoundary, type BoundaryError } from '../../components/map/utils'
 import { normalizeHex, pickUnusedPreset, withAlpha } from '../../components/map/color'
 import ColorPicker from '../../components/colorPicker/ColorPicker'
 import { isDocked } from '../../components/topbar/robotInfo'
-import { fetchGen3MapBoundaries } from '../../loaders/gen3Boundaries'
+import { fetchGen3MapBoundaries, setCachedGen3Boundaries } from '../../loaders/gen3Boundaries'
 import { getGen3CleaningMode, getGen3NavigationMode, getGen4CleaningMode, getGen4NavigationMode } from '../../utils/modes'
 
 
@@ -53,6 +53,10 @@ export default () => {
 
     const { robot } = useRobot()
     const skipNextPostRef = useRef(false)
+    const [editError, setEditError] = useState<BoundaryError>()
+    const [saveFailed, setSaveFailed] = useState(false)
+    // Gen3: only one setMapBoundaries in flight; newer edits wait and only the latest is sent
+    const gen3SaveRef = useRef<{ busy: boolean, next?: { mapId: string, boundaries: (NoGoLine | Zone)[] } }>({ busy: false })
 
     const { data: persistentMaps, refresh: updatePersistentMaps } = usePersistentMaps()
     const getPromotedFloorplan = useGetPromotedFloorplan()
@@ -149,14 +153,35 @@ export default () => {
             boundary.type === 'polygon'
                 ? {
                     ...boundary,
-                    relevancy: calcRelevancy(boundary.vertices)
+                    relevancy: calcInteriorPoint(boundary.vertices)
                 }
                 : boundary
         );
-        GEN3_COMMANDS.setMapBoundaries(robot.serial, persistentMap, updatedBoundaries).catch(() => {
-            getMapBoundaries();
-        });
+        queueGen3Save(persistentMap, updatedBoundaries)
     }, [boundaries]);
+
+    const queueGen3Save = (mapId: string, boundaries: (NoGoLine | Zone)[]) => {
+        const state = gen3SaveRef.current
+        state.next = { mapId, boundaries }
+        if (state.busy) return
+        state.busy = true
+        const run = async () => {
+            while (state.next) {
+                const job = state.next
+                state.next = undefined
+                try {
+                    await GEN3_COMMANDS.setMapBoundaries(robot.serial, job.mapId, job.boundaries)
+                    setCachedGen3Boundaries(robot.serial, job.mapId, job.boundaries)
+                    setSaveFailed(false)
+                } catch {
+                    setSaveFailed(true)
+                    state.next = undefined
+                }
+            }
+            state.busy = false
+        }
+        run()
+    }
 
     // mode changes
     useEffect(() => {
@@ -170,6 +195,7 @@ export default () => {
             })
         }
         if (mode !== 'boundary-edit') {
+            setEditError(undefined)
             setCurrentLinePoints([])
             setClosedAsPolygon(false)
             return
@@ -190,6 +216,9 @@ export default () => {
     }, [mode])
 
     const saveEditBoundary = () => {
+        const error = validateBoundary(currentLinePoints, closedAsPolygon)
+        setEditError(error)
+        if (error) return
         setMode(returnFromEditMode);
         const id = activeBoundaryId ?? uuidv4();
         const updated = {
@@ -373,8 +402,10 @@ export default () => {
                         setColor={(color) => updateForm(setEditForm, { color })}
                         setZoneType={(zoneType) => updateForm(setEditForm, { zoneType })}
                         cancel={() => {
+                            setEditError(undefined)
                             setMode(returnFromEditMode)
                         }}
+                        error={editError && t(`map.boundaryError.${editError}`)}
                         supportsZoneType={robot.type === RobotType.NeatoGen4}
                     />
                 )}
@@ -405,6 +436,12 @@ export default () => {
                             <Button text={t('map.editMapDetails')} style='primary' onClick={() => setMode('map-edit')} />
                         </div>
                         <hr />
+                        {saveFailed && (
+                            <div className={styles.error}>
+                                <span>{t('map.saveFailed')}</span>
+                                <Button text={t('map.reload')} style='primary' onClick={() => { setSaveFailed(false); getMapBoundaries() }} />
+                            </div>
+                        )}
                         <div className={styles.buttonContainer}>
                             <Button text={t('map.addFeature')} style='primary' onClick={() => openEdit(uuidv4())} />
                         </div>
@@ -508,6 +545,7 @@ interface EditBoundaryDetailsProps {
     cancel: () => void
     setDrawerOpen: (open: boolean) => void;
     supportsZoneType: boolean
+    error?: string
 }
 
 const EditBoundaryDetails = (props: EditBoundaryDetailsProps) => {
@@ -558,6 +596,8 @@ const EditBoundaryDetails = (props: EditBoundaryDetailsProps) => {
                 </Input>
             </div>
 
+
+            {props.error && <span className={styles.error}>{props.error}</span>}
 
             <div className={styles.editBoundaryActionButtons}>
                 <Button text={t('common.cancel')} style='fail' onClick={() => props.cancel()} />

@@ -160,7 +160,14 @@
         "drawHint": "Desenhar uma linha cria uma linha No-Go; usar o botão de polígono para ligar o cursor ao primeiro ponto cria uma zona ou zona No-Go.",
         "promote": "Usar mapa",
         "demote": "Parar de usar mapa",
-        "gen4UpdateBugHint": "NOTA: a modificação de mapas, zonas ou linhas pode desativar os agendamentos. Isto ocorre no firmware do robot, mas já estamos à procura de uma solução"
+        "gen4UpdateBugHint": "NOTA: a modificação de mapas, zonas ou linhas pode desativar os agendamentos. Isto ocorre no firmware do robot, mas já estamos à procura de uma solução",
+        "saveFailed": "O robô não guardou as zonas.",
+        "reload": "Recarregar",
+        "boundaryError": {
+            "tooFewPoints": "Poucos pontos.",
+            "selfIntersecting": "As arestas cruzam-se.",
+            "tooSmall": "A zona é demasiado pequena."
+        }
     },
     "settings": {
         "serial": "N.º de série: {{serial}}",
