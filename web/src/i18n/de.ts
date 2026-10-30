@@ -110,6 +110,7 @@ const de = {
         noMap: 'Keine Karte',
         dock: 'Basis',
         floor: 'Grundriss',
+        noGo: 'No-Go-Linie',
     },
     runs: {
         title: 'Reinigungen',

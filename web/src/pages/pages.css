@@ -5,7 +5,7 @@
 
 /* Karte */
 .mappage { display: flex; flex-direction: column; gap: var(--s-4); flex: 1; }
-.mappage-view { position: relative; height: calc(100dvh - 160px); min-height: 320px; border-radius: var(--r-l); overflow: hidden; border: 1px solid var(--border); background: var(--map-unknown); }
+.mappage-view { position: relative; height: calc(100dvh - 160px); min-height: 320px; border-radius: var(--r-l); overflow: hidden; border: 1px solid var(--border); background: var(--map-bg); }
 .mappage-view .mapview { border-radius: 0; }
 @container app (max-width: 640px) {
     .mappage-view { height: calc(100dvh - 210px); }

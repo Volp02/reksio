@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api/client'
-import type { MapData, PersistentMap, RunSummary } from '../api/types'
+import { api, gen3 } from '../api/client'
+import type { Boundary, MapData, PersistentMap, RunSummary } from '../api/types'
 
 // Karten und Reinigungen ändern sich selten: einfacher Cache pro Sitzung
 const cache = new Map<string, Promise<unknown>>()
@@ -45,6 +45,12 @@ export function useRuns(serial: string | undefined, version = 0) {
 
 export function useRunData(serial: string | undefined, id: string | undefined) {
     return useLoad<MapData>(serial && id ? `run:${serial}:${id}` : undefined, () => api.run(serial!, id!))
+}
+
+/** Zonen und No-Go-Linien einer Karte; kommen vom Roboter, daher nur wenn er verbunden ist */
+export function useBoundaries(serial: string | undefined, mapId: string | undefined, connected: boolean) {
+    return useLoad<Boundary[]>(serial && mapId && connected ? `bounds:${serial}:${mapId}` : undefined,
+        () => gen3.getMapBoundaries(serial!, mapId!).then((r) => r.data.boundaries ?? []))
 }
 
 /** Karte, auf der Reksio fährt: die aktivierte, sonst die neueste */

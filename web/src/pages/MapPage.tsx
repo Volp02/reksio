@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Map as MapIcon } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { useStore } from '../state/store'
-import { activeMap, useMapData, useMaps } from '../state/data'
+import { activeMap, useBoundaries, useMapData, useMaps } from '../state/data'
 import { MapView } from '../map/MapView'
+import { Legend } from '../map/Legend'
 import { Empty, Segmented } from '../ui/ui'
 import './pages.css'
 
@@ -15,6 +16,7 @@ export function MapPage() {
     const current = chosen ?? activeMap(maps.data)?.id
     const map = maps.data?.find((m) => m.id === current)
     const data = useMapData(s.serial, current)
+    const bounds = useBoundaries(s.serial, current, s.connected)
 
     return (
         <div className="mappage">
@@ -24,9 +26,10 @@ export function MapPage() {
             )}
             <div className="mappage-view">
                 {data.data
-                    ? <MapView data={data.data} kind="floor" label={map?.name || t.map.floor} fill />
+                    ? <MapView data={data.data} boundaries={bounds.data} label={map?.name || t.map.floor} fill />
                     : <Empty icon={<MapIcon />} label={data.loading || maps.loading ? t.common.loading : t.map.noMap} />}
             </div>
+            <Legend boundaries={bounds.data} noGo={t.map.noGo} />
         </div>
     )
 }

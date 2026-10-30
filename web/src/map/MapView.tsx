@@ -1,18 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Maximize, Minus, Plus } from 'lucide-react'
-import type { MapData } from '../api/types'
+import type { Boundary, MapData } from '../api/types'
 import { useI18n } from '../i18n'
 import { useTheme } from '../ui/theme'
 import { IconButton } from '../ui/ui'
-import { renderMap } from './render'
+import { BITMAP_SCALE, drawDots, mapColors, renderBitmap, toGrid, type Colors, type Grid } from './render'
 import './map.css'
 
-const MAX_SCALE = 8 // CSS-Pixel pro Kartenpixel
+const MAX_SCALE = 24 // CSS-Pixel pro Kartenzelle
 
 interface View { scale: number; x: number; y: number }
 
-export function MapView({ data, kind, controls = 'full', label, fill = false }:
-    { data: MapData; kind: 'floor' | 'run'; controls?: 'full' | 'fit'; label: string; fill?: boolean }) {
+interface Props {
+    data: MapData
+    /** gefahrene Spur, gleiches Raster wie `data` */
+    run?: MapData
+    boundaries?: Boundary[]
+    label: string
+    controls?: 'full' | 'fit'
+    fill?: boolean
+}
+
+export function MapView({ data, run, boundaries, label, controls = 'full', fill = false }: Props) {
     const { t } = useI18n()
     const { resolved } = useTheme()
     const wrap = useRef<HTMLDivElement>(null)
@@ -21,8 +30,12 @@ export function MapView({ data, kind, controls = 'full', label, fill = false }:
     const fitted = useRef(true)
     const frame = useRef(0)
 
-    // Kartenbild nur bei neuer Karte oder neuem Thema neu erzeugen
-    const { canvas: bitmap, bounds } = useMemo(() => renderMap(data, kind), [data, kind, resolved])
+    const grid = useMemo<Grid>(() => toGrid(data, run), [data, run])
+    // Farben und Punktebild nur bei neuer Karte oder neuem Thema neu erzeugen
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const colors = useMemo<Colors>(() => mapColors(), [resolved])
+    const bitmap = useMemo(() => renderBitmap(grid, colors), [grid, colors])
+    const bounds = grid.bounds
 
     const draw = useCallback(() => {
         cancelAnimationFrame(frame.current)
@@ -31,14 +44,39 @@ export function MapView({ data, kind, controls = 'full', label, fill = false }:
             if (!c) return
             const g = c.getContext('2d')!
             const dpr = window.devicePixelRatio || 1
-            g.setTransform(1, 0, 0, 1, 0, 0)
-            g.clearRect(0, 0, c.width, c.height)
-            const v = view.current
-            g.setTransform(dpr * v.scale, 0, 0, dpr * v.scale, dpr * v.x, dpr * v.y)
-            g.imageSmoothingEnabled = v.scale < 2
-            g.drawImage(bitmap, 0, 0)
+            const { scale, x, y } = view.current
+            g.setTransform(dpr, 0, 0, dpr, 0, 0)
+            g.fillStyle = colors.bg
+            g.fillRect(0, 0, c.width, c.height)
+
+            if (scale * dpr <= BITMAP_SCALE * 1.25) {
+                // rausgezoomt: vorgerendertes Bild skalieren
+                g.imageSmoothingEnabled = true
+                g.imageSmoothingQuality = 'high'
+                g.drawImage(bitmap, x, y, grid.width * scale, grid.height * scale)
+            } else {
+                // reingezoomt: nur sichtbare Zellen live, damit die Punkte scharf bleiben
+                const w = c.width / dpr, h = c.height / dpr
+                const x0 = Math.max(0, Math.floor(-x / scale)), y0 = Math.max(0, Math.floor(-y / scale))
+                const x1 = Math.min(grid.width, Math.ceil((w - x) / scale)), y1 = Math.min(grid.height, Math.ceil((h - y) / scale))
+                drawDots(g, grid, colors, scale, x, y, x0, y0, x1, y1)
+            }
+
+            drawBoundaries(g, boundaries, grid, scale, x, y)
+
+            if (data.dock) {
+                const dx = x + data.dock.pixel_x * scale, dy = y + data.dock.pixel_y * scale
+                const r = Math.max(4, Math.min(8, scale * 1.5))
+                g.fillStyle = colors.dock
+                g.strokeStyle = colors.bg
+                g.lineWidth = 2
+                g.beginPath()
+                g.arc(dx, dy, r, 0, Math.PI * 2)
+                g.fill()
+                g.stroke()
+            }
         })
-    }, [bitmap])
+    }, [bitmap, boundaries, colors, data.dock, grid])
 
     const fitScale = useCallback(() => {
         const el = wrap.current
@@ -61,15 +99,14 @@ export function MapView({ data, kind, controls = 'full', label, fill = false }:
 
     const zoomAt = useCallback((factor: number, cx: number, cy: number) => {
         const v = view.current
-        const min = fitScale() * 0.8
-        const scale = Math.min(MAX_SCALE, Math.max(min, v.scale * factor))
+        const scale = Math.min(MAX_SCALE, Math.max(fitScale() * 0.8, v.scale * factor))
         const k = scale / v.scale
         view.current = { scale, x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k }
         fitted.current = false
         draw()
     }, [draw, fitScale])
 
-    // Größe: Canvas an Container anpassen, eingepasst bleiben, solange nicht gezoomt wurde
+    // Canvas an Container anpassen; eingepasst bleiben, solange nicht gezoomt wurde
     useEffect(() => {
         const el = wrap.current
         const c = canvas.current
@@ -85,25 +122,27 @@ export function MapView({ data, kind, controls = 'full', label, fill = false }:
         return () => ro.disconnect()
     }, [fit, draw])
 
-    useEffect(() => { fit() }, [data, fit])
-    useEffect(() => { draw() }, [bitmap, draw])
+    useEffect(() => { fit() }, [grid, fit])
+    useEffect(() => { draw() }, [draw])
 
     // Mausrad und Gesten
     useEffect(() => {
         const el = wrap.current
         if (!el || controls !== 'full') return
         const pointers = new Map<number, { x: number; y: number }>()
-        let pinch: { d: number } | null = null
+        let pinch: number | null = null
         const local = (e: { clientX: number; clientY: number }) => {
             const r = el.getBoundingClientRect()
             return { x: e.clientX - r.left, y: e.clientY - r.top }
         }
+        const onCtl = (e: Event) => !!(e.target as HTMLElement).closest('.mapctl')
         const onWheel = (e: WheelEvent) => {
             e.preventDefault()
             const p = local(e)
             zoomAt(Math.exp(-e.deltaY * 0.0015), p.x, p.y)
         }
         const onDown = (e: PointerEvent) => {
+            if (onCtl(e)) return
             el.setPointerCapture(e.pointerId)
             pointers.set(e.pointerId, local(e))
         }
@@ -120,15 +159,19 @@ export function MapView({ data, kind, controls = 'full', label, fill = false }:
             } else if (pointers.size === 2) {
                 const [a, b] = [...pointers.values()]
                 const d = Math.hypot(a.x - b.x, a.y - b.y)
-                if (pinch) zoomAt(d / pinch.d, (a.x + b.x) / 2, (a.y + b.y) / 2)
-                pinch = { d }
+                if (pinch) zoomAt(d / pinch, (a.x + b.x) / 2, (a.y + b.y) / 2)
+                pinch = d
             }
         }
         const onUp = (e: PointerEvent) => {
             pointers.delete(e.pointerId)
             if (pointers.size < 2) pinch = null
         }
-        const onDbl = (e: MouseEvent) => { const p = local(e); zoomAt(2, p.x, p.y) }
+        const onDbl = (e: MouseEvent) => {
+            if (onCtl(e)) return
+            const p = local(e)
+            zoomAt(2, p.x, p.y)
+        }
         el.addEventListener('wheel', onWheel, { passive: false })
         el.addEventListener('pointerdown', onDown)
         el.addEventListener('pointermove', onMove)
@@ -163,4 +206,56 @@ export function MapView({ data, kind, controls = 'full', label, fill = false }:
             </div>
         </div>
     )
+}
+
+/** Zonen (Fläche + Rand + Name) und No-Go-Linien als Vektoren; Eckpunkte sind normiert (0..1) */
+function drawBoundaries(g: CanvasRenderingContext2D, boundaries: Boundary[] | undefined, grid: Grid, scale: number, ox: number, oy: number) {
+    if (!boundaries?.length) return
+    const css = getComputedStyle(document.documentElement)
+    const sx = grid.width * scale, sy = grid.height * scale
+    const pt = ([u, v]: [number, number]): [number, number] => [ox + u * sx, oy + v * sy]
+    const visible = boundaries.filter((b) => b.enabled !== false)
+
+    for (const b of visible) {
+        if (b.type !== 'polygon' || b.vertices.length < 3) continue
+        g.beginPath()
+        b.vertices.forEach((p, i) => (i ? g.lineTo(...pt(p)) : g.moveTo(...pt(p))))
+        g.closePath()
+        g.globalAlpha = 0.18
+        g.fillStyle = b.color
+        g.fill()
+        g.globalAlpha = 1
+        g.lineWidth = 2
+        g.strokeStyle = b.color
+        g.stroke()
+    }
+    for (const b of visible) {
+        if (b.type !== 'polyline' || b.vertices.length < 2) continue
+        g.beginPath()
+        b.vertices.forEach((p, i) => (i ? g.lineTo(...pt(p)) : g.moveTo(...pt(p))))
+        g.setLineDash([6, 4])
+        g.lineWidth = 3
+        g.lineCap = 'round'
+        g.strokeStyle = b.color || css.getPropertyValue('--danger')
+        g.stroke()
+        g.setLineDash([])
+    }
+    // Namen in der Zone, nur wenn genug Platz
+    g.font = `500 12px ${css.getPropertyValue('--font-sans')}`
+    g.textAlign = 'center'
+    g.textBaseline = 'middle'
+    g.lineJoin = 'round'
+    for (const b of visible) {
+        if (b.type !== 'polygon' || !b.name) continue
+        const ps = b.vertices.map(pt)
+        const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1])
+        const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys)
+        if (w < 40 || h < 18) continue
+        const [cx, cy] = b.relevancy ? pt(b.relevancy) : [(Math.max(...xs) + Math.min(...xs)) / 2, (Math.max(...ys) + Math.min(...ys)) / 2]
+        g.lineWidth = 3
+        g.strokeStyle = css.getPropertyValue('--map-bg')
+        g.strokeText(b.name, cx, cy, w - 8)
+        g.fillStyle = css.getPropertyValue('--text')
+        g.fillText(b.name, cx, cy, w - 8)
+    }
 }

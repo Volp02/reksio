@@ -24,9 +24,16 @@
 .tone-danger .card-h > .lucide { color: var(--danger); }
 .is-stale .big, .is-stale .kv dd { color: var(--text-3); }
 
-.spark { width: 100%; height: 48px; display: block; overflow: visible; }
-.spark-line { fill: none; stroke: var(--cat-1); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
-.spark-band { fill: var(--info-soft); }
+.bchart { width: 100%; height: 120px; }
+.bchart svg { display: block; overflow: visible; font-family: var(--font-sans); }
+.bchart-band { fill: var(--info-soft); }
+.bchart-grid { stroke: var(--border); stroke-width: 1; }
+.bchart-ylab { fill: var(--text-3); font-size: var(--fs-caption); text-anchor: end; dominant-baseline: middle; }
+.bchart-xlab { fill: var(--text-3); font-size: var(--fs-caption); text-anchor: middle; }
+.bchart-line { fill: none; stroke: var(--cat-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.bchart-cursor { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.bchart-dot { fill: var(--cat-1); stroke: var(--surface); stroke-width: 2; }
+.bchart-tip { fill: var(--text); font-size: var(--fs-caption); font-weight: 500; text-anchor: middle; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; }
 
 .rows { list-style: none; margin: 0; padding: 0; }
 .rows li + li { border-top: 1px solid var(--border); }

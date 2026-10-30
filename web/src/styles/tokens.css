@@ -39,9 +39,10 @@
     --cat-5: #e87ba4;
     --cat-6: #008300;
 
-    --map-unknown: var(--surface-3);
-    --map-free: var(--surface);
-    --map-wall: var(--text-2);
+    --map-bg: #eceef2;
+    --map-floor: #cfd3da;
+    --map-wall: #505561;
+    --map-path: var(--accent);
 
     --scrim: rgb(16 24 40 / 0.4);
     --shadow-1: 0 1px 2px rgb(16 24 40 / 0.05), 0 1px 3px rgb(16 24 40 / 0.04);
@@ -82,8 +83,9 @@
     --cat-4: #c98500;
     --cat-5: #d55181;
 
-    --map-unknown: var(--bg);
-    --map-free: var(--surface-2);
+    --map-bg: #111419;
+    --map-floor: #2e333c;
+    --map-wall: #a9adb5;
 
     --scrim: rgb(0 0 0 / 0.6);
     --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);

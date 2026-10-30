@@ -95,15 +95,16 @@ Legende ab zwei Reihen.
 
 | Token | Ebene | Hell | Dunkel |
 |---|---|---|---|
-| `--map-unknown` | unbekannt | `surface-3` | `bg` |
-| `--map-free` | befahrbar | `surface` | `surface-2` |
-| `--map-wall` | Wand, Hindernis | `text-2` | `text-2` |
-| `--map-path` | gefahrene Spur | `accent` 55 % | `accent` 55 % |
-| `--map-robot` | Reksio (Punkt + Blickrichtung) | `accent`, Rand `on-accent` | `accent`, Rand `on-accent` |
-| `--map-dock` | Basis | `ok` | `ok` |
-| `--map-zone-*` | Zonen | Diagramm-Slot, Fläche 18 %, Rand 100 % | wie hell |
-| `--map-nogo` | No-Go-Linie | `danger`, 3 px, gestrichelt | wie hell |
+| `--map-bg` | unbekannt / Hintergrund | `#eceef2` | `#111419` |
+| `--map-floor` | befahrbar (Punkt, 45 % der Zelle) | `#cfd3da` | `#2e333c` |
+| `--map-wall` | Wand, Hindernis (Punkt, 75 % der Zelle) | `#505561` | `#a9adb5` |
+| `--map-path` | gefahrene Spur (Punkt, 50 %, Deckkraft 80 %) | `accent` | `accent` |
+| Reksio | Punkt + Blickrichtung | `accent`, Rand `on-accent` | wie hell |
+| Basis | Punkt mit Rand | `ok` | `ok` |
+| Zonen | Farbe der Zone vom Roboter, Fläche 18 %, Rand 2 px, Name in der Zone | — | — |
+| No-Go-Linie | Farbe vom Roboter (sonst `danger`), 3 px, gestrichelt | — | — |
 
+Jede Kartenzelle ist ein Punkt (wie in der bisherigen Vacuula-Karte). Unter der Karte steht die Legende der Zonen (Name + Farbe).
 Die Karte nutzt die Thema-Farben, kein festes Bild-Schwarz-Weiß.
 
 ### 3.6 Kontrast (WCAG 2.x, berechnet)
@@ -253,8 +254,10 @@ Lädt Reksio, steht „lädt“ und, wenn bekannt, die Zeit bis voll.
 
 ### 12.4 Karte
 
-- Die Karte wird **einmal** in ein Offscreen-Bild gerendert (je Thema). Zoomen und Verschieben transformieren nur dieses
-  Bild; Spur, Position, Zonen liegen als eigene Ebene darüber und werden nur bei Änderung neu gezeichnet.
+- Die Punkte werden **einmal** in 4 Pixeln pro Zelle vorgerendert (je Thema). Rausgezoomt wird nur dieses Bild skaliert;
+  ab mehr als 5 Pixeln pro Zelle werden nur die sichtbaren Punkte live gezeichnet, damit sie scharf bleiben.
+  Zonen, No-Go-Linien, Basis und Position liegen als Vektoren darüber.
+- Fahrten (Reinigungen) liegen über der Bodenkarte mit derselben ID; beide haben dasselbe Raster.
 - Bedienung: Mausrad/Pinch zoomt um den Zeiger, Ziehen verschiebt, Doppelklick zoomt hinein, Knopf „Einpassen“.
   Zoom zwischen „ganze Karte“ und 8 Pixeln pro Kartenpixel.
 - Ebenen von unten: unbekannt · befahrbar · Wand · Zonen · Spur · No-Go-Linien · Basis · Reksio.
@@ -276,8 +279,10 @@ Formatierung über `Intl` mit der Sprache der Oberfläche und der Zeitzone des S
 
 ### 12.6 Reinigungen
 
-Liste mit Datum, Dauer, Fläche, Akkuverbrauch. Detail: Run-Karte und Akkukurve (Linie, Slot 1, x = Uhrzeit, y = 0–100 %,
-Ladephasen als `info-soft`-Band hinterlegt, Tooltip mit Wert und Uhrzeit).
+Liste mit Datum, Dauer, Fläche, Akkuverbrauch. Detail: Bodenkarte mit Spur und Akkukurve.
+
+**Akkukurve** (Übersicht: letzte 3 h): Linie Slot 1, y-Achse 0 / 50 / 100 % mit Gitterlinien, x-Achse Uhrzeit (volle bzw.
+halbe Stunden), Ladephasen als `info-soft`-Band, Zeiger mit Wert und Uhrzeit beim Darüberfahren.
 
 ## 13. Sprache (DE / EN)
 

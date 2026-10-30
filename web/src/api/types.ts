@@ -129,3 +129,14 @@ export interface ScheduleEvent {
     mapId?: string
     boundaryId?: string
 }
+
+/** Zone (Polygon) oder No-Go-Linie (Polylinie); Eckpunkte normiert auf Kartenbreite/-höhe */
+export interface Boundary {
+    id: string
+    type: 'polygon' | 'polyline'
+    name: string
+    color: string
+    enabled?: boolean
+    vertices: [number, number][]
+    relevancy?: [number, number]
+}

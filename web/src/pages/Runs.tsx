@@ -1,7 +1,7 @@
 import { ChevronLeft, History } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { useStore } from '../state/store'
-import { sortRuns, useMaps, useRunData, useRuns } from '../state/data'
+import { sortRuns, useMapData, useMaps, useRunData, useRuns } from '../state/data'
 import { fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
 import { Card, Empty, Label } from '../ui/ui'
@@ -15,6 +15,8 @@ export function Runs({ selected }: { selected?: string }) {
     const list = sortRuns(runs.data)
     const current = selected ?? list[0]?.id
     const run = useRunData(s.serial, current)
+    // jede Reinigung hat eine Bodenkarte mit derselben ID und demselben Raster
+    const floor = useMapData(s.serial, current)
     const when = (id: string) => {
         const ts = idToTs(id)
         return ts ? fmtWhen(locale, s.server?.timezone, ts, s.now, t.overview, true) : id
@@ -42,9 +44,9 @@ export function Runs({ selected }: { selected?: string }) {
             {current && (
                 <Card className="runs-detail" title={when(current)}
                     icon={<a href="#/runs" className="btn btn--ghost btn--s btn--icon runs-back" aria-label={t.nav.back}><ChevronLeft /></a>}>
-                    {run.data
-                        ? <MapView data={run.data} kind="run" label={when(current)} />
-                        : <Empty label={run.loading ? t.common.loading : t.map.noMap} />}
+                    {floor.data
+                        ? <MapView data={floor.data} run={run.data} label={when(current)} />
+                        : <Empty label={floor.loading || run.loading ? t.common.loading : t.map.noMap} />}
                 </Card>
             )}
         </div>

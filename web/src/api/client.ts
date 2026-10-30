@@ -1,4 +1,4 @@
-import type { GeneralInfo, MapData, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry } from './types'
+import type { Boundary, GeneralInfo, MapData, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry } from './types'
 import { CleaningCategory, type CleaningMode, type NavigationMode } from './types'
 
 // Relativ, damit die App auch hinter einem Präfix (HA-Ingress) läuft
@@ -46,5 +46,7 @@ export const gen3 = {
     sendToBase: (s: string) => api.command(s, 'sendToBase'),
     findMe: (s: string) => api.command(s, 'findMe'),
     dismissAlert: (s: string) => api.command(s, 'dismissCurrentAlert'),
+    getMapBoundaries: (s: string, mapId: string) =>
+        api.command<{ data: { boundaries?: Boundary[] } }>(s, 'getMapBoundaries', { mapId }),
     getSchedule: (s: string) => api.command<{ data: { enabled: boolean; events: ScheduleEvent[] } }>(s, 'getSchedule'),
 }

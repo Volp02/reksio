@@ -113,6 +113,7 @@ const en: Shape<Dict> = {
         noMap: 'No map',
         dock: 'Base',
         floor: 'Floor plan',
+        noGo: 'No-go line',
     },
     runs: {
         title: 'Cleanings',

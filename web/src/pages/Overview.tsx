@@ -3,13 +3,15 @@ import {
     BatteryCharging, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, History, House, Map as MapIcon, Pause, Play, Square, TriangleAlert,
 } from 'lucide-react'
 import { gen3 } from '../api/client'
-import { CleaningCategory, CleaningMode, NavigationMode, type Telemetry } from '../api/types'
+import { CleaningCategory, CleaningMode, NavigationMode } from '../api/types'
 import { fill, useI18n } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
-import { activeMap, sortRuns, useMapData, useMaps, useRuns } from '../state/data'
+import { activeMap, sortRuns, useBoundaries, useMapData, useMaps, useRuns } from '../state/data'
 import { batteryPercent, batteryTone, cleaningSince, dischargeRate, isCleaning, problemText, robotStatus } from '../status'
 import { fmtDuration, fmtNumber, fmtTime, fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
+import { Legend } from '../map/Legend'
+import { BatteryChart } from './BatteryChart'
 import { Button, Card, Confirm, Empty, KV, Label, Pill, Toast, Value } from '../ui/ui'
 import { cleaningPrefs } from './Settings'
 import './overview.css'
@@ -127,7 +129,7 @@ function BatteryCard() {
             <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={t.battery.title}>
                 <i style={{ width: `${pct ?? 0}%` }} />
             </div>
-            <Spark history={s.history} label={t.battery.history} />
+            <BatteryChart history={s.history} label={t.battery.history} />
             <KV rows={[
                 [t.battery.voltage, a ? <Value value={fmtNumber(locale, a.batteryVoltageV, 1)} unit="V" /> : none],
                 [t.battery.current, a ? <Value value={fmtNumber(locale, a.batteryCurrentMA)} unit="mA" /> : none],
@@ -137,43 +139,20 @@ function BatteryCard() {
     )
 }
 
-/** Akkuverlauf der letzten 3 h; Ladephasen hinterlegt */
-function Spark({ history, label }: { history: Telemetry[]; label: string }) {
-    const pts = history.filter((h) => h.charger)
-    if (pts.length < 2) return null
-    const w = 300, h = 48
-    const t0 = pts[0].ts, t1 = pts[pts.length - 1].ts
-    const x = (ts: number) => ((ts - t0) / Math.max(1, t1 - t0)) * w
-    const y = (p: number) => h - 3 - (p / 100) * (h - 6)
-    const line = pts.map((p) => `${x(p.ts).toFixed(1)},${y(p.charger!.fuelPercent).toFixed(1)}`).join(' ')
-    const bands: [number, number][] = []
-    for (const p of pts) {
-        if (p.charger!.chargingActive) {
-            const last = bands[bands.length - 1]
-            if (last && p.ts - last[1] < 120) last[1] = p.ts
-            else bands.push([p.ts, p.ts])
-        }
-    }
-    return (
-        <svg className="spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label={label}>
-            {bands.map(([a, b], i) => <rect key={i} x={x(a)} y={0} width={Math.max(1, x(b) - x(a))} height={h} className="spark-band" />)}
-            <polyline points={line} className="spark-line" />
-        </svg>
-    )
-}
-
 function MapCard() {
     const { t } = useI18n()
     const s = useStore()
     const maps = useMaps(s.serial)
     const active = activeMap(maps.data)
     const data = useMapData(s.serial, active?.id)
+    const bounds = useBoundaries(s.serial, active?.id, s.connected)
     return (
         <Card className="ov-map" icon={<MapIcon />} title={active?.name || t.map.floor}
             aside={<a href="#/map" className="btn btn--ghost btn--s"><Label>{t.nav.map}</Label></a>}>
             {data.data
-                ? <MapView data={data.data} kind="floor" label={active?.name || t.map.floor} />
+                ? <MapView data={data.data} boundaries={bounds.data} label={active?.name || t.map.floor} />
                 : <Empty icon={<MapIcon />} label={data.loading || maps.loading ? t.common.loading : t.map.noMap} />}
+            <Legend boundaries={bounds.data} noGo={t.map.noGo} />
         </Card>
     )
 }
