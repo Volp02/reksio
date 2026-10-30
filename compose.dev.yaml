@@ -3,8 +3,8 @@
 services:
   vacuula-dev:
     build:
-      context: ./server
-      dockerfile: build/docker/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     image: reksio-vacuula:dev
     network_mode: host
     environment:

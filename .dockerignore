@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+web/.env.local
+server/app
+logs
+android
+esp
+.git
