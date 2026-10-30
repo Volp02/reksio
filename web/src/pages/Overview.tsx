@@ -11,6 +11,7 @@ import { batteryPercent, batteryTone, cleaningSince, dischargeRate, isCleaning, 
 import { fmtDuration, fmtNumber, fmtTime, fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
 import { Legend } from '../map/Legend'
+import { useLive } from '../map/useLive'
 import { BatteryChart } from './BatteryChart'
 import { Button, Card, Confirm, Empty, IconButton, KV, Label, Pill, Segmented, Toast, Value } from '../ui/ui'
 import { getPrefs, setPrefs, usePrefs } from '../state/prefs'
@@ -170,15 +171,17 @@ function MapCard() {
     // Zonen nur laden, wenn eingeblendet
     const bounds = useBoundaries(s.serial, prefs.zones ? active?.id : undefined, s.connected)
     const zones = prefs.zones ? bounds.data : undefined
+    const live = useLive(data.data)
     return (
         <Card className="ov-map" icon={<MapIcon />} title={active?.name || t.map.floor}
             aside={<>
+                {live && <Pill tone={live.robot?.stale ? 'neutral' : 'info'} label={t.map.live} />}
                 <IconButton size="s" icon={<Shapes />} label={t.map.zones} aria-pressed={prefs.zones}
                     className={prefs.zones ? 'is-cur' : ''} onClick={() => setPrefs({ zones: !prefs.zones })} />
                 <a href="#/map" className="btn btn--ghost btn--s"><Label>{t.nav.map}</Label></a>
             </>}>
             {data.data
-                ? <MapView data={data.data} boundaries={zones} label={active?.name || t.map.floor} />
+                ? <MapView data={data.data} boundaries={zones} live={live} label={active?.name || t.map.floor} />
                 : <Empty icon={<MapIcon />} label={data.loading || maps.loading ? t.common.loading : t.map.noMap} />}
             <Legend boundaries={zones} noGo={t.map.noGo} />
         </Card>

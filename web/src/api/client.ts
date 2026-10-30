@@ -1,4 +1,4 @@
-import type { Boundary, GeneralInfo, MapData, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry } from './types'
+import type { Boundary, GeneralInfo, MapData, Pose, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry } from './types'
 import { CleaningCategory, type CleaningMode, type NavigationMode } from './types'
 
 // Relativ, damit die App auch hinter einem Präfix (HA-Ingress) läuft
@@ -30,6 +30,9 @@ export const api = {
     telemetryLatest: (serial: string) => request<Telemetry>('GET', `/robot/${serial}/telemetry/latest`),
     telemetry: (serial: string, since: number, until?: number) =>
         request<Telemetry[]>('GET', `/robot/${serial}/telemetry?since=${since}${until ? `&until=${until}` : ''}`),
+    poses: (serial: string, since: number) =>
+        request<[number, number, number, number][]>('GET', `/robot/${serial}/poses?since=${since}`)
+            .then((rows) => rows.map(([ts, x, y, theta]): Pose => ({ ts, x, y, theta }))),
     command: <T = unknown>(serial: string, cmd: string, params?: object) =>
         request<T>('POST', `/robot/${serial}/command`, params ? { cmd, params } : { cmd }),
 }

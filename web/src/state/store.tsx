@@ -16,6 +16,8 @@ export interface Store {
     telemetry?: Telemetry
     history: Telemetry[]
     pose?: Pose
+    /** Posen der letzten Stunden (für die Spur der laufenden Fahrt) */
+    poses: Pose[]
     /** Sekundentakt für Frische-Anzeigen */
     now: number
     refresh: () => void
@@ -36,6 +38,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const [telemetry, setTelemetry] = useState<Telemetry>()
     const [history, setHistory] = useState<Telemetry[]>([])
     const [pose, setPose] = useState<Pose>()
+    const [poses, setPoses] = useState<Pose[]>([])
     const [now, setNow] = useState(() => Date.now() / 1000)
     const [reload, setReload] = useState(0)
 
@@ -71,7 +74,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
         es.addEventListener('pose', (e) => {
             const p = JSON.parse((e as MessageEvent).data) as Pose & { serial: string }
-            if (p.serial === serialRef.current) setPose(p)
+            if (p.serial !== serialRef.current) return
+            setPose(p)
+            setPoses((ps) => [...ps.filter((x) => x.ts > p.ts - HISTORY_S), p])
         })
         es.onopen = () => setServerError(false)
         return () => es.close()
@@ -111,12 +116,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!serial) return
         api.telemetryLatest(serial).then(setTelemetry).catch(() => undefined)
         api.telemetry(serial, Date.now() / 1000 - HISTORY_S).then(setHistory).catch(() => undefined)
+        api.poses(serial, Date.now() / 1000 - HISTORY_S).then((ps) => {
+            setPoses(ps)
+            if (ps.length) setPose(ps[ps.length - 1])
+        }).catch(() => undefined)
     }, [serial, reload])
 
     const value: Store = {
         server, serverError, robots, serial,
         name: (serial && robots?.[serial]?.name) || 'Reksio',
-        connected, robot, robotAt, telemetry, history, pose, now,
+        connected, robot, robotAt, telemetry, history, pose, poses, now,
         refresh: () => setReload((n) => n + 1),
         refreshRobot,
     }

@@ -5,6 +5,7 @@ import { useI18n } from '../i18n'
 import { useTheme } from '../ui/theme'
 import { IconButton } from '../ui/ui'
 import { BITMAP_SCALE, drawDots, mapColors, pickLevel, renderBitmap, toGrid, type Colors, type Grid } from './render'
+import type { Live } from './useLive'
 import './map.css'
 
 const MAX_SCALE = 24 // CSS-Pixel pro Kartenzelle
@@ -16,12 +17,14 @@ interface Props {
     /** gefahrene Spur, gleiches Raster wie `data` */
     run?: MapData
     boundaries?: Boundary[]
+    /** Reksio und Spur der laufenden Fahrt (Kartenpixel) */
+    live?: Live
     label: string
     controls?: 'full' | 'fit'
     fill?: boolean
 }
 
-export function MapView({ data, run, boundaries, label, controls = 'full', fill = false }: Props) {
+export function MapView({ data, run, boundaries, live, label, controls = 'full', fill = false }: Props) {
     const { t } = useI18n()
     const { resolved } = useTheme()
     const wrap = useRef<HTMLDivElement>(null)
@@ -72,6 +75,19 @@ export function MapView({ data, run, boundaries, label, controls = 'full', fill 
 
             drawBoundaries(g, boundaries, grid, scale, x, y)
 
+            // Spur der laufenden Fahrt
+            if (live?.trail.length) {
+                g.beginPath()
+                live.trail.forEach((p, i) => (i ? g.lineTo(x + p.px * scale, y + p.py * scale) : g.moveTo(x + p.px * scale, y + p.py * scale)))
+                g.strokeStyle = colors.path
+                g.globalAlpha = 0.7
+                g.lineWidth = Math.max(2, Math.min(6, scale * 0.6))
+                g.lineJoin = 'round'
+                g.lineCap = 'round'
+                g.stroke()
+                g.globalAlpha = 1
+            }
+
             if (data.dock) {
                 const dx = x + data.dock.pixel_x * scale, dy = y + data.dock.pixel_y * scale
                 const r = Math.max(4, Math.min(8, scale * 1.5))
@@ -83,8 +99,29 @@ export function MapView({ data, run, boundaries, label, controls = 'full', fill 
                 g.fill()
                 g.stroke()
             }
+
+            // Reksio: Punkt mit Blickrichtung, hohl wenn die Position veraltet ist
+            if (live?.robot) {
+                const { px, py, heading, stale } = live.robot
+                const rx = x + px * scale, ry = y + py * scale
+                const r = Math.max(7, Math.min(14, scale * 4.2)) // D7 ≈ 33 cm ≈ 8,4 Zellen
+                g.lineWidth = 2.5
+                g.beginPath()
+                g.arc(rx, ry, r, 0, Math.PI * 2)
+                g.fillStyle = stale ? colors.bg : colors.path
+                g.strokeStyle = stale ? colors.path : colors.onPath
+                g.fill()
+                g.stroke()
+                g.beginPath()
+                g.moveTo(rx + Math.cos(heading) * r * 0.75, ry + Math.sin(heading) * r * 0.75)
+                g.lineTo(rx + Math.cos(heading + 2.5) * r * 0.45, ry + Math.sin(heading + 2.5) * r * 0.45)
+                g.lineTo(rx + Math.cos(heading - 2.5) * r * 0.45, ry + Math.sin(heading - 2.5) * r * 0.45)
+                g.closePath()
+                g.fillStyle = stale ? colors.path : colors.onPath
+                g.fill()
+            }
         })
-    }, [bitmaps, boundaries, colors, data.dock, grid])
+    }, [bitmaps, boundaries, colors, data.dock, grid, live])
 
     const fitScale = useCallback(() => {
         const el = wrap.current

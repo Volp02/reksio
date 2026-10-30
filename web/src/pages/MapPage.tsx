@@ -5,6 +5,7 @@ import { useStore } from '../state/store'
 import { activeMap, useBoundaries, useMapData, useMaps } from '../state/data'
 import { MapView } from '../map/MapView'
 import { Legend } from '../map/Legend'
+import { useLive } from '../map/useLive'
 import { Empty, Segmented } from '../ui/ui'
 import './pages.css'
 
@@ -17,6 +18,8 @@ export function MapPage() {
     const map = maps.data?.find((m) => m.id === current)
     const data = useMapData(s.serial, current)
     const bounds = useBoundaries(s.serial, current, s.connected)
+    // Live nur auf der Karte, auf der Reksio gerade fährt
+    const live = useLive(current === activeMap(maps.data)?.id ? data.data : undefined)
 
     return (
         <div className="mappage">
@@ -26,7 +29,7 @@ export function MapPage() {
             )}
             <div className="mappage-view">
                 {data.data
-                    ? <MapView data={data.data} boundaries={bounds.data} label={map?.name || t.map.floor} fill />
+                    ? <MapView data={data.data} boundaries={bounds.data} live={live} label={map?.name || t.map.floor} fill />
                     : <Empty icon={<MapIcon />} label={data.loading || maps.loading ? t.common.loading : t.map.noMap} />}
             </div>
             <Legend boundaries={bounds.data} noGo={t.map.noGo} />

@@ -267,7 +267,9 @@ Lädt Reksio, steht „lädt“ und, wenn bekannt, die Zeit bis voll.
 - Fahrten (Reinigungen) liegen über der Bodenkarte mit derselben ID; beide haben dasselbe Raster.
 - Bedienung: Mausrad/Pinch zoomt um den Zeiger, Ziehen verschiebt, Doppelklick zoomt hinein, Knopf „Einpassen“.
   Zoom zwischen „ganze Karte“ und 8 Pixeln pro Kartenpixel.
-- Ebenen von unten: unbekannt · befahrbar · Wand · Zonen · Spur · No-Go-Linien · Basis · Reksio.
+- Ebenen von unten: unbekannt · befahrbar · Wand · Zonen · No-Go-Linien · Spur der laufenden Fahrt · Basis · Reksio.
+- Live: Reksio als Punkt im Akzent mit Blickrichtung (Größe ≈ Roboter, mind. 7 px), Spur der laufenden Fahrt als Linie
+  (Akzent, 70 %). Ohne neue Position seit 10 s wird der Punkt hohl. Im Kopf der Kartenkarte steht dann die Pill „Live“.
 - Die Karte füllt ihre Karte ganz; am Handy volle Breite, Höhe mindestens 60 % des Bildschirms.
 
 ### 12.5 Zahlen, Einheiten, Zeit
@@ -314,7 +316,7 @@ halbe Stunden), Ladephasen als `info-soft`-Band, Zeiger mit Wert und Uhrzeit bei
 | Punkt | Stand |
 |---|---|
 | Rahmen von Eingabefeldern hell 1,5:1 | akzeptiert (§3.6) |
-| Live-Position auf der gespeicherten Karte | wartet auf Schritt 0 (Drehung je Karte), siehe `docs/step0-koordinaten.md` |
+| Live-Position | feste Umrechnung Pose → Karte (`web/src/map/pose.ts`), ermittelt in `docs/step0-koordinaten.md`; nur auf der aktiven Karte |
 | Logo | Platzhalter (Icon `Bot` im Akzent) |
 | Hoher Kontrast (`data-contrast="more"`) | Rahmen und `text-2/3` verstärkt; Werte folgen mit der ersten Umsetzung |
 

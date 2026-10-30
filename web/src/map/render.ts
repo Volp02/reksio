@@ -19,7 +19,7 @@ export interface Grid {
     bounds: { x: number; y: number; w: number; h: number }
 }
 
-export interface Colors { bg: string; floor: string; floorFlat: string; wall: string; path: string; dock: string }
+export interface Colors { bg: string; floor: string; floorFlat: string; wall: string; path: string; onPath: string; dock: string }
 
 // Anteil der Zelle, den ein Bodenpunkt bedeckt (Kreis mit 45 % Durchmesser ≈ 16 %), etwas aufgerundet für Sichtbarkeit
 const FLOOR_COVERAGE = 0.25
@@ -35,7 +35,7 @@ export function mapColors(): Colors {
     const s = getComputedStyle(document.documentElement)
     const v = (n: string) => s.getPropertyValue(n).trim()
     const bg = v('--map-bg'), floor = v('--map-floor')
-    return { bg, floor, floorFlat: mix(floor, bg, FLOOR_COVERAGE), wall: v('--map-wall'), path: v('--map-path'), dock: v('--ok') }
+    return { bg, floor, floorFlat: mix(floor, bg, FLOOR_COVERAGE), wall: v('--map-wall'), path: v('--map-path'), onPath: v('--on-accent'), dock: v('--ok') }
 }
 
 function decode(data: MapData, map: (v: number) => number): Uint8Array {

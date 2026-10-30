@@ -112,6 +112,7 @@ const de = {
         floor: 'Grundriss',
         noGo: 'No-Go-Linie',
         zones: 'Zonen',
+        live: 'Live',
     },
     runs: {
         title: 'Reinigungen',

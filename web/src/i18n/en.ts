@@ -115,6 +115,7 @@ const en: Shape<Dict> = {
         floor: 'Floor plan',
         noGo: 'No-go line',
         zones: 'Zones',
+        live: 'Live',
     },
     runs: {
         title: 'Cleanings',
