@@ -9,12 +9,14 @@ services:
     network_mode: host
     environment:
       - VACUULA_PORT=8150
-      - GEN3_PORT=1335
+      - GEN3_PORT=336
       - GEN4_PORT=13443
       - MDNS_ENABLED=False
       - TZ=Europe/Berlin
       # - HOST_IP=<SERVER-IP>  # nur nötig, wenn die IP nicht automatisch erkannt wird
       - LOG_LEVEL=debug
+      # ESP32 (OpenNeato) am Debug-Port, IP in .env (gitignored): ESP_HOST=<ESP-IP>
+      - ESP_HOST=${ESP_HOST:-}
     volumes:
       - vacuula-dev-data:/server/data
 
