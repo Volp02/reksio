@@ -6,8 +6,9 @@ export const BITMAP_SCALE = BITMAP_LEVELS[BITMAP_LEVELS.length - 1]
 
 // Punktdurchmesser relativ zur Zelle (wie die bisherige Vacuula-Karte) …
 const DOT = { floor: 0.45, wall: 0.75, run: 0.5 }
-// … aber nie kleiner als diese Pixel, sonst verblassen Wände beim Rauszoomen (Deckung sinkt)
-const MIN_PX = { floor: 1, wall: 1.5, run: 1 }
+// … aber nie kleiner als diese Pixel, sonst verblassen Wände beim Rauszoomen (Deckung sinkt).
+// Wände dürfen dabei über ihre Zelle hinausragen (rausgezoomt werden sie so etwas dicker statt dunkler).
+const MIN_PX = { floor: 0, wall: 2.5, run: 0 }
 const RUN_ALPHA = 0.8
 
 export interface Grid {
@@ -18,12 +19,23 @@ export interface Grid {
     bounds: { x: number; y: number; w: number; h: number }
 }
 
-export interface Colors { bg: string; floor: string; wall: string; path: string; dock: string }
+export interface Colors { bg: string; floor: string; floorFlat: string; wall: string; path: string; dock: string }
+
+// Anteil der Zelle, den ein Bodenpunkt bedeckt (Kreis mit 45 % Durchmesser ≈ 16 %), etwas aufgerundet für Sichtbarkeit
+const FLOOR_COVERAGE = 0.25
+
+function mix(a: string, b: string, t: number): string {
+    const p = (h: string) => { const v = h.replace('#', ''); return [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16)) }
+    const [x, y] = [p(a), p(b)]
+    if (x.some(Number.isNaN) || y.some(Number.isNaN)) return a
+    return `rgb(${x.map((c, i) => Math.round(c * t + y[i] * (1 - t))).join(' ')})`
+}
 
 export function mapColors(): Colors {
     const s = getComputedStyle(document.documentElement)
     const v = (n: string) => s.getPropertyValue(n).trim()
-    return { bg: v('--map-bg'), floor: v('--map-floor'), wall: v('--map-wall'), path: v('--map-path'), dock: v('--ok') }
+    const bg = v('--map-bg'), floor = v('--map-floor')
+    return { bg, floor, floorFlat: mix(floor, bg, FLOOR_COVERAGE), wall: v('--map-wall'), path: v('--map-path'), dock: v('--ok') }
 }
 
 function decode(data: MapData, map: (v: number) => number): Uint8Array {
@@ -77,7 +89,8 @@ export function toGrid(floor: MapData, run?: MapData): Grid {
 export function drawDots(g: CanvasRenderingContext2D, grid: Grid, c: Colors, scale: number, ox: number, oy: number,
     x0 = 0, y0 = 0, x1 = grid.width, y1 = grid.height) {
     const floor = new Path2D(), wall = new Path2D(), run = new Path2D()
-    const size = (k: keyof typeof DOT) => Math.min(scale, Math.max(DOT[k] * scale, MIN_PX[k]))
+    // Boden und Spur behalten ihre relative Größe (gleiche Helligkeit in jeder Stufe), Wände bekommen eine Mindestgröße
+    const size = (k: keyof typeof DOT) => Math.max(DOT[k] * scale, MIN_PX[k])
     const df = size('floor'), dw = size('wall'), dr = size('run')
     // sehr klein: Quadrate statt Kreise (Kreise unter ~2 px werden nur unscharf)
     const square = scale <= 2
@@ -93,12 +106,13 @@ export function drawDots(g: CanvasRenderingContext2D, grid: Grid, c: Colors, sca
             const i = row + x
             const v = grid.floor[i]
             const cx = ox + (x + 0.5) * scale
-            if (v === 1) add(floor, cx, cy, df)
+            // klein: Boden flächig in Mischfarbe (wirkt so hell wie die Punkte beim Reinzoomen)
+            if (v === 1) add(floor, cx, cy, square ? scale : df)
             else if (v === 2) add(wall, cx, cy, dw)
             if (grid.run?.[i]) add(run, cx, cy, dr)
         }
     }
-    g.fillStyle = c.floor
+    g.fillStyle = square ? c.floorFlat : c.floor
     g.fill(floor)
     g.fillStyle = c.wall
     g.fill(wall)
