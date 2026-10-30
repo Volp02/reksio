@@ -78,7 +78,7 @@ export interface GeneralInfo {
 export interface Telemetry {
     ts: number
     state: { uiState: string; robotState: string } | null
-    error: { hasError: boolean; kind: string; errorCode: number; displayMessage: string } | null
+    error: { hasError: boolean; kind: string; errorCode: number; errorMessage: string; displayMessage: string } | null
     charger: {
         fuelPercent: number
         chargingActive: boolean

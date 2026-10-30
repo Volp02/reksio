@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Bot, CalendarClock, ChevronLeft, Cpu, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Sun } from 'lucide-react'
 import { useI18n, fill } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
-import { robotStatus } from '../status'
+import { espProblem, robotStatus } from '../status'
 import { fmtTime } from '../format'
 import { useTheme } from '../ui/theme'
 import { IconButton, Label, Pill } from '../ui/ui'
@@ -19,7 +19,8 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
     const { t, locale } = useI18n()
     const { resolved, toggle } = useTheme()
     const store = useStore()
-    const status = robotStatus(t, store.connected, store.robot)
+    const status = robotStatus(t, store.connected, store.robot,
+        espProblem(t, store.telemetry, isFresh(store.telemetry?.ts, store.now, TELEMETRY_STALE_S)))
     const tz = store.server?.timezone
     const asOf = Math.max(store.robotAt ?? 0, store.telemetry?.ts ?? 0)
     const espFresh = isFresh(store.telemetry?.ts, store.now, TELEMETRY_STALE_S)

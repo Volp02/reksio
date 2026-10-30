@@ -2,12 +2,12 @@ import { useState, type ReactNode } from 'react'
 import {
     BatteryCharging, Shapes, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, History, House, Map as MapIcon, Pause, Play, Square, TriangleAlert,
 } from 'lucide-react'
-import { gen3 } from '../api/client'
+import { esp, gen3 } from '../api/client'
 import { CleaningCategory, CleaningMode, NavigationMode } from '../api/types'
 import { fill, useI18n } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
 import { activeMap, sortRuns, useBoundaries, useMapData, useMaps, useRuns } from '../state/data'
-import { batteryPercent, batteryTone, cleaningSince, dischargeRate, isCleaning, problemText, robotStatus } from '../status'
+import { batteryPercent, batteryTone, cleaningSince, dischargeRate, espProblem, isCleaning, problemText, robotStatus } from '../status'
 import { fmtDuration, fmtNumber, fmtTime, fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
 import { Legend } from '../map/Legend'
@@ -32,13 +32,16 @@ export function Overview() {
     )
 }
 
-type Cmd = 'primary' | 'stop' | 'dock'
+type Cmd = 'primary' | 'stop' | 'dock' | 'dismiss'
 
 function ControlCard() {
     const { t, locale } = useI18n()
     const s = useStore()
     const r = s.robot
-    const status = robotStatus(t, s.connected, r)
+    const espP = espProblem(t, s.telemetry, isFresh(s.telemetry?.ts, s.now, TELEMETRY_STALE_S))
+    const status = robotStatus(t, s.connected, r, espP)
+    // quittierte ESP-Meldung ausblenden, bis ein anderer Code kommt
+    const [dismissed, setDismissed] = useState<string>()
     const [busy, setBusy] = useState<Cmd>()
     const [confirmStop, setConfirmStop] = useState(false)
     const [toast, setToast] = useState<string>()
@@ -63,7 +66,14 @@ function ControlCard() {
     }
 
     const prefs = usePrefs()
-    const problem = r?.error ? problemText(t, r.error) : r?.alert ? problemText(t, r.alert) : undefined
+    // Cloud-Fehler/-Hinweis vor ESP-Meldung; ESP-Meldungen kommen per GetErr direkt vom Roboter
+    const cloud = r?.error ? problemText(t, r.error) : r?.alert ? problemText(t, r.alert) : undefined
+    const espShown = espP && espP.code !== dismissed ? espP : undefined
+    const problem = cloud
+        ? { text: cloud, tone: r?.error ? 'danger' : 'warn', dismiss: r?.error ? undefined : () => gen3.dismissAlert(s.serial!) }
+        : espShown
+            ? { text: espShown.text, tone: espShown.kind === 'error' ? 'danger' : 'warn', dismiss: async () => { await esp.post('clear-errors'); setDismissed(espShown.code) } }
+            : undefined
     const since = isCleaning(r) ? cleaningSince(s.history) : undefined
     const mode = r && isCleaning(r) ? modeLabel(t, r.cleaning.category, r.cleaning.mode, r.cleaning.navigationMode) : undefined
 
@@ -74,9 +84,10 @@ function ControlCard() {
                 <Pill tone={status.tone} label={status.label} />
             </div>
             {problem && (
-                <div className={`ov-problem ov-problem--${r?.error ? 'danger' : 'warn'}`} role="alert">
-                    <TriangleAlert /><span className="wrap">{problem}</span>
-                    {!r?.error && <Button size="s" variant="ghost" label={t.actions.dismiss} onClick={() => send('primary', () => gen3.dismissAlert(s.serial!))} />}
+                <div className={`ov-problem ov-problem--${problem.tone}`} role="alert">
+                    <TriangleAlert /><span className="wrap">{problem.text}</span>
+                    {problem.dismiss && <Button size="s" variant="ghost" label={t.actions.dismiss} loading={busy === 'dismiss'}
+                        onClick={() => send('dismiss', problem.dismiss!)} />}
                 </div>
             )}
             <div className="ov-ctrls">

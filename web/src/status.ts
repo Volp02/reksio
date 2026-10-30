@@ -3,12 +3,30 @@ import type { Dict } from './i18n/de'
 
 export type Tone = 'ok' | 'info' | 'warn' | 'danger' | 'neutral'
 
+/** Fehler/Hinweis, den der ESP per GetErr direkt vom Roboter liest (kommt über das Cloud-Protokoll oft nicht an) */
+export interface EspProblem { code: string; kind: 'warning' | 'error'; text: string }
+
+// Hinweise, die nur den Ablauf beschreiben (zeigt die Statusanzeige) und keine Aktion verlangen
+const QUIET_ALERTS = /^UI_ALERT_(INVALID|RETURN_TO_|CHARGING_|BUSY_CHARGING|RECOVERING_LOCATION|INFO_THANK_YOU|TIME_SET|TIMER_|ENABLE_TIMER|LINKEDAPP|LOG|SWUPDATE_SUCCESS|ACQUIRING_PERSISTENT_MAP_IDS|CREATING_AND_UPLOADING_MAP|USB_DISCONNECTED|OLD_ERROR|WAIT_FOR_POWER_SWITCH_DETECT)/
+
+export function espProblem(t: Dict, tel: Telemetry | undefined, fresh: boolean): EspProblem | undefined {
+    const e = tel?.error
+    if (!fresh || !e?.hasError) return undefined
+    const raw = e.errorMessage ?? ''
+    const codes = [...raw.matchAll(/\((UI_(?:ALERT|ERROR)_[A-Z0-9_]+)\)/g)].map((m) => m[1]).filter((c) => !/_INVALID$/.test(c))
+    const code = codes.find((c) => c.startsWith('UI_ERROR_')) ?? codes[0]
+    if (!code || (code.startsWith('UI_ALERT_') && QUIET_ALERTS.test(code))) return undefined
+    const key = code.replace(/^UI_/, '').toLowerCase() as keyof Dict['codes']
+    return { code, kind: code.startsWith('UI_ERROR_') ? 'error' : 'warning', text: t.codes[key] ?? e.displayMessage ?? code }
+}
+
 export interface Status { label: string; tone: Tone }
 
 /** Lage von Reksio als ein Wort + Ton (DESIGN.md §12.1) */
-export function robotStatus(t: Dict, connected: boolean, r: RobotStateData | undefined): Status {
+export function robotStatus(t: Dict, connected: boolean, r: RobotStateData | undefined, esp?: EspProblem): Status {
     if (!connected || !r) return { label: t.status.offline, tone: 'neutral' }
     if (r.error || r.state === RobotState.ERROR) return { label: problemText(t, r.error) ?? t.status.error, tone: 'danger' }
+    if (esp?.kind === 'error') return { label: esp.text, tone: 'danger' }
     if (r.state === RobotState.PAUSED) return { label: t.status.paused, tone: 'warn' }
     if (r.state === RobotState.BUSY) {
         switch (r.action) {
