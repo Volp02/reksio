@@ -1,5 +1,8 @@
 #include "web_server.h"
+// HEADLESS (Reksio): ohne eingebettete Weboberfläche, nur /api. Einstellungen macht die Reksio-App über den Server.
+#ifndef HEADLESS
 #include "web_assets.h"
+#endif
 #include "neato_serial.h"
 #include "data_logger.h"
 #include "system_manager.h"
@@ -56,6 +59,13 @@ void WebServer::sendOk(AsyncWebServerRequest *request) {
 }
 
 void WebServer::begin() {
+#ifdef HEADLESS
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "application/json",
+                      fieldsToJson({{"name", "OpenNeato", FIELD_STRING}, {"headless", "true", FIELD_BOOL}}));
+    });
+    LOG("WEB", "Headless build: no embedded frontend");
+#else
     // Register all embedded frontend assets from the auto-generated registry
     for (size_t i = 0; i < WEB_ASSETS_COUNT; i++) {
         const WebAsset& asset = WEB_ASSETS[i];
@@ -65,6 +75,7 @@ void WebServer::begin() {
     }
 
     LOG("WEB", "Registered %u embedded assets", WEB_ASSETS_COUNT);
+#endif
 
     registerApiRoutes();
     registerManualRoutes();
