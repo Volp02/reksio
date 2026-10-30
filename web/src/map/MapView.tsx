@@ -123,6 +123,12 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
         })
     }, [bitmaps, boundaries, colors, data.dock, grid, live])
 
+    // Zoom/Einpassen/Gesten rufen immer die aktuelle Zeichenfunktion, hängen aber nicht von ihr ab:
+    // sonst würde jede neue Live-Position die Ansicht neu einpassen
+    const drawRef = useRef(draw)
+    drawRef.current = draw
+    const redraw = useCallback(() => drawRef.current(), [])
+
     const fitScale = useCallback(() => {
         const el = wrap.current
         if (!el) return 1
@@ -139,8 +145,8 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             y: (el.clientHeight - bounds.h * s) / 2 - bounds.y * s,
         }
         fitted.current = true
-        draw()
-    }, [bounds, draw, fitScale])
+        redraw()
+    }, [bounds, redraw, fitScale])
 
     const zoomAt = useCallback((factor: number, cx: number, cy: number) => {
         const v = view.current
@@ -148,8 +154,8 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
         const k = scale / v.scale
         view.current = { scale, x: cx - (cx - v.x) * k, y: cy - (cy - v.y) * k }
         fitted.current = false
-        draw()
-    }, [draw, fitScale])
+        redraw()
+    }, [redraw, fitScale])
 
     // Canvas an Container anpassen; eingepasst bleiben, solange nicht gezoomt wurde
     useEffect(() => {
@@ -161,11 +167,11 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             c.width = Math.round(el.clientWidth * dpr)
             c.height = Math.round(el.clientHeight * dpr)
             if (fitted.current) fit()
-            else draw()
+            else redraw()
         })
         ro.observe(el)
         return () => ro.disconnect()
-    }, [fit, draw])
+    }, [fit, redraw])
 
     useEffect(() => { fit() }, [grid, fit])
     useEffect(() => { draw() }, [draw])
@@ -200,7 +206,7 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
                 const v = view.current
                 view.current = { ...v, x: v.x + cur.x - prev.x, y: v.y + cur.y - prev.y }
                 fitted.current = false
-                draw()
+                redraw()
             } else if (pointers.size === 2) {
                 const [a, b] = [...pointers.values()]
                 const d = Math.hypot(a.x - b.x, a.y - b.y)
@@ -231,7 +237,7 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             el.removeEventListener('pointercancel', onUp)
             el.removeEventListener('dblclick', onDbl)
         }
-    }, [controls, draw, zoomAt])
+    }, [controls, redraw, zoomAt])
 
     const center = () => {
         const el = wrap.current!
