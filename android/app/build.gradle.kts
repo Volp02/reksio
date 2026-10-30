@@ -29,21 +29,24 @@ android {
         buildConfigField("String", "ESP_HOST", "\"${einstellung("espHost", "neato.local")}\"")
     }
 
-    // Fester Debug-Schlüssel im Repo, damit jede neue APK sich über die installierte
-    // legen lässt, egal wer baut. Die App läuft nur im eigenen Netz, kein Store.
+    // Signierschlüssel liegt nur lokal (gitignored), Pfad und Passwort in local.properties:
+    //   reksio.keystore=reksio.keystore
+    //   reksio.keystorePassword=<geheim>
+    // build.sh legt beides beim ersten Bau an. Gleicher Schlüssel = APK lässt sich
+    // über die installierte legen; neuer Schlüssel = App einmal deinstallieren.
     signingConfigs {
-        getByName("debug") {
-            storeFile = file("../debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+        create("reksio") {
+            storeFile = rootProject.file(einstellung("keystore", "reksio.keystore"))
+            storePassword = einstellung("keystorePassword", "")
+            keyAlias = "reksio"
+            keyPassword = einstellung("keystorePassword", "")
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("reksio")
         }
     }
 
