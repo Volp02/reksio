@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Reksio · Übersicht (Mockup)</title>
+<style>
+/* ---- Tokens (docs/DESIGN.md §2–§8) ---- */
+.app[data-theme=light]{--page:#eaebee;--bg:#f9fafc;--surface:#fff;--surface-2:#f3f4f7;--surface-3:#e9ebef;--border:#e4e6ea;--border-strong:#ced1d6;--text:#161b24;--text-2:#505561;--text-3:#676c75;
+ --accent:#127a7d;--accent-soft:#e1f3f2;--accent-text:#0b6164;--on-accent:#fff;
+ --ok:#389560;--ok-soft:#e4f0e8;--ok-text:#306d4e;--warn:#d49838;--warn-soft:#f8edde;--warn-text:#775c38;--danger:#cb4644;--danger-soft:#fce8e6;--danger-text:#9b3e3e;--info:#4188b6;--info-soft:#e6eff6;--info-text:#356486;
+ --cat-1:#2a78d6;--cat-2:#eb6834;--cat-3:#1baf7a;
+ --map-unknown:var(--surface-3);--map-free:var(--surface);--map-wall:var(--text-2);
+ --shadow-1:0 1px 2px rgb(16 24 40 / .05),0 1px 3px rgb(16 24 40 / .04)}
+.app[data-theme=dark]{--page:#06070b;--bg:#0f1217;--surface:#161920;--surface-2:#1e2229;--surface-3:#262a32;--border:#2a2e36;--border-strong:#41454e;--text:#edeef2;--text-2:#b1b4bb;--text-3:#8f929a;
+ --accent:#5fc0bd;--accent-soft:#183334;--accent-text:#93dbd8;--on-accent:#0f1217;
+ --ok:#389560;--ok-soft:#1c2929;--ok-text:#74b08a;--warn:#d49838;--warn-soft:#342e29;--warn-text:#e0bf93;--danger:#cb4644;--danger-soft:#2c2126;--danger-text:#d9746e;--info:#4188b6;--info-soft:#1d2631;--info-text:#77a6c9;
+ --cat-1:#3987e5;--cat-2:#d95926;--cat-3:#199e70;
+ --map-unknown:var(--bg);--map-free:var(--surface-2);--map-wall:var(--text-2);
+ --shadow-1:0 1px 2px rgb(0 0 0 / .4),0 1px 3px rgb(0 0 0 / .3)}
+.app{--d:1;--s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;--s-6:24px;--s-7:32px;--r-s:8px;--r-m:12px;--r-l:18px;--r-full:999px;
+ font-family:Outfit,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.5;color:var(--text);background:var(--bg);
+ font-variant-numeric:tabular-nums;border-radius:var(--r-l);overflow:hidden;border:1px solid var(--border)}
+.app *{box-sizing:border-box;min-width:0}
+.lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+svg.i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+svg.i.l{width:20px;height:20px}
+
+/* ---- Bausteine ---- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-l);box-shadow:var(--shadow-1);padding:var(--s-5);display:flex;flex-direction:column;gap:var(--s-4)}
+.card-h{display:flex;align-items:center;gap:var(--s-2);min-height:28px}
+.card-h h3{margin:0;font-size:16px;font-weight:600;flex:1}
+.card-h .i{color:var(--text-2)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:var(--r-full);font-size:13px;font-weight:500;max-width:min(100%,15rem);flex:none}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.pill.info{background:var(--info-soft);color:var(--info-text)}.pill.ok{background:var(--ok-soft);color:var(--ok-text)}.pill.neutral{background:var(--surface-2);color:var(--text-2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s-2);height:40px;padding:0 16px;border-radius:var(--r-m);border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:inherit;font-weight:500;max-width:min(100%,15rem)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.icon{width:40px;padding:0}
+.btn.sm{height:32px;padding:0 12px;font-size:13px}.btn.icon.sm{width:32px;padding:0}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--text-2)}
+.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0;font-size:15px}
+.kv>*{padding:9px 0;border-bottom:1px solid var(--border)}
+.kv>:nth-last-child(-n+2){border-bottom:0}
+.kv dt{color:var(--text-2)}.kv dd{margin:0;text-align:right;font-weight:500}
+.unit{color:var(--text-2);font-weight:400}
+.big{font-size:34px;font-weight:500;line-height:1.1;letter-spacing:-.01em}
+.big .unit{font-size:16px;margin-left:4px}
+.meta{font-size:13px;color:var(--text-3)}
+.bar{height:6px;border-radius:var(--r-full);background:var(--surface-3);overflow:hidden}.bar>i{display:block;height:100%;background:var(--accent);border-radius:inherit}
+
+/* ---- Shell ---- */
+.shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:860px}
+.side{border-right:1px solid var(--border);padding:var(--s-4) var(--s-3);display:flex;flex-direction:column;gap:var(--s-1)}
+.brand{display:flex;align-items:center;gap:var(--s-3);padding:6px 8px 18px;font-weight:600;font-size:17px}
+.logo{width:32px;height:32px;border-radius:var(--r-s);background:var(--accent);color:var(--on-accent);display:grid;place-items:center}
+.nav{display:flex;align-items:center;gap:var(--s-3);height:40px;padding:0 12px;border-radius:var(--r-m);color:var(--text-2);font-weight:500}
+.nav.cur{background:var(--accent-soft);color:var(--accent-text)}
+.side .foot{margin-top:auto;display:flex;flex-direction:column;gap:var(--s-2);padding:var(--s-3) 8px 4px;border-top:1px solid var(--border)}
+.side .foot .row{display:flex;align-items:center;gap:var(--s-2);font-size:13px;color:var(--text-2)}
+.main{padding:var(--s-6) var(--s-7);display:flex;flex-direction:column;gap:var(--s-5)}
+.ph{display:flex;align-items:center;gap:var(--s-3)}
+.ph h1{margin:0;font-size:26px;font-weight:600;flex:1}
+.ph .meta{font-size:13px}
+.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:var(--s-5);align-items:start}
+.col{display:flex;flex-direction:column;gap:var(--s-5)}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s-5)}
+
+/* ---- Karte ---- */
+.mapwrap{position:relative;border-radius:var(--r-m);overflow:hidden;background:var(--map-unknown)}
+.mapwrap svg.map{display:block;width:100%;height:auto}
+.mapctl{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.mapctl .btn{box-shadow:var(--shadow-1)}
+.legend{display:flex;flex-wrap:wrap;gap:var(--s-4);font-size:13px;color:var(--text-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+/* ---- Steuerung ---- */
+.status{display:flex;align-items:center;gap:var(--s-3)}
+.status .name{font-size:19px;font-weight:600;flex:1}
+.ctrls{display:flex;flex-wrap:wrap;gap:var(--s-2)}
+.ctrls .btn{flex:1 1 auto;max-width:none;padding:0 12px}
+
+
+/* ---- Liste ---- */
+.list{display:flex;flex-direction:column}
+.li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:var(--s-4);align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.li:last-child{border-bottom:0}
+.li .t{font-weight:500}.li .s{font-size:13px;color:var(--text-3)}
+.li .n{text-align:right;font-weight:500}
+
+/* ---- Handy ---- */
+.phone{width:340px;min-height:740px;display:flex;flex-direction:column}
+.phone .top{display:flex;align-items:center;gap:var(--s-3);padding:14px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+.phone .top b{font-size:17px;font-weight:600;flex:1}
+.phone .body{padding:var(--s-4);display:flex;flex-direction:column;gap:var(--s-4);flex:1}
+.phone .card{padding:var(--s-4);gap:var(--s-3)}
+.phone .big{font-size:30px}
+.bnav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid var(--border);background:var(--surface);padding:6px 4px 10px}
+.bnav a{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--text-3);padding:6px 0;border-radius:var(--r-m)}
+.bnav a.cur{color:var(--accent-text)}
+.bnav a.cur svg{background:var(--accent-soft);border-radius:var(--r-full);padding:3px 14px;width:48px;height:28px;box-sizing:border-box}
+.bnav a svg{width:20px;height:28px;padding:4px 0}
+
+/* ---- Bühne (nur Mockup) ---- */
+.stage{display:flex;flex-direction:column;gap:20px}
+.cap{font-size:12px;color:var(--muted-foreground,#888);margin:0 0 6px 2px}
+.desk{width:1280px;zoom:.5625}
+.phones{display:flex;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div>
+    <p class="cap">Desktop · Dunkel · 1280 px (verkleinert)</p>
+    <div class="app desk" data-theme="dark">
+      <div class="shell">
+        <aside class="side">
+          <div class="brand"><span class="logo" data-i="bot"></span><span class="lbl">Reksio</span></div>
+          <a class="nav cur"><span data-i="dash" data-l></span><span class="lbl">Übersicht</span></a>
+          <a class="nav"><span data-i="map" data-l></span><span class="lbl">Karte</span></a>
+          <a class="nav"><span data-i="history" data-l></span><span class="lbl">Reinigungen</span></a>
+          <a class="nav"><span data-i="cal" data-l></span><span class="lbl">Zeitplan</span></a>
+          <a class="nav"><span data-i="gear" data-l></span><span class="lbl">Einstellungen</span></a>
+          <div class="foot">
+            <div class="row"><span class="pill ok"><span class="lbl">Verbunden</span></span></div>
+            <div class="row"><span data-i="cpu"></span><span class="lbl">ESP · Stand 19:42:08</span></div>
+          </div>
+        </aside>
+        <main class="main">
+          <div class="ph"><h1 class="lbl">Übersicht</h1><span class="meta">Stand 19:42</span><button class="btn ghost icon sm" aria-label="Aktualisieren"><span data-i="refresh"></span></button></div>
+          <div class="grid">
+            <div class="col">
+            <section class="card">
+              <div class="card-h"><span data-i="map"></span><h3 class="lbl">OG</h3><span class="pill info"><span class="lbl">Live</span></span></div>
+              <div class="mapwrap"><span data-map></span>
+                <div class="mapctl"><button class="btn icon sm" aria-label="Vergrößern"><span data-i="plus"></span></button><button class="btn icon sm" aria-label="Verkleinern"><span data-i="minus"></span></button><button class="btn icon sm" aria-label="Einpassen"><span data-i="fit"></span></button></div>
+              </div>
+              <div class="legend"><span><i style="background:var(--accent)"></i>Reksio · Spur</span><span><i style="background:var(--ok)"></i>Basis</span><span><i style="background:var(--cat-1);opacity:.6"></i>Küche</span><span><i style="background:var(--danger)"></i>No-Go</span></div>
+            </section>
+            <section class="card">
+              <div class="card-h"><span data-i="history"></span><h3 class="lbl">Letzte Reinigungen</h3><button class="btn ghost sm"><span class="lbl">Alle</span></button></div>
+              <div class="list">
+                <div class="li"><div><div class="t lbl">Gestern, 23:12</div><div class="s lbl">Haus · 1 Ladestopp</div></div><div class="n">58 m²</div><div class="n">2 h 04 min</div></div>
+                <div class="li"><div><div class="t lbl">Gestern, 19:59</div><div class="s lbl">Haus</div></div><div class="n">41 m²</div><div class="n">1 h 02 min</div></div>
+                <div class="li"><div><div class="t lbl">29.10. 17:43</div><div class="s lbl">Erkundung</div></div><div class="n">–</div><div class="n">38 min</div></div>
+              </div>
+            </section>
+            </div>
+            <div class="col">
+              <section class="card">
+                <div class="status"><span class="name lbl">Reksio</span><span class="pill info"><span class="lbl">Reinigt</span></span></div>
+                <div class="ctrls">
+                  <button class="btn primary"><span data-i="pause"></span><span class="lbl">Pause</span></button>
+                  <button class="btn"><span data-i="stop"></span><span class="lbl">Stopp</span></button>
+                  <button class="btn"><span data-i="house"></span><span class="lbl">Zur Basis</span></button>
+                </div>
+                <dl class="kv" style="margin:0">
+                  <dt class="lbl">Modus</dt><dd class="lbl">Haus · Normal</dd>
+                  <dt class="lbl">Seit</dt><dd>18:32 · 1 h 10 min</dd>
+                  <dt class="lbl">Fläche</dt><dd>42 <span class="unit">m²</span></dd>
+                </dl>
+              </section>
+              <section class="card">
+                <div class="card-h"><span data-i="batt"></span><h3 class="lbl">Akku</h3><span class="meta">19:42:08</span></div>
+                <div style="display:flex;align-items:end;gap:16px"><div class="big">47<span class="unit">%</span></div><div class="meta" style="padding-bottom:4px">38 %/h · ca. 1 h 14 min</div></div>
+                <div class="bar"><i style="width:47%"></i></div>
+                <span data-spark></span>
+                <dl class="kv" style="margin:0">
+                  <dt>Spannung</dt><dd>14,2 <span class="unit">V</span></dd>
+                  <dt>Strom</dt><dd>−1 985 <span class="unit">mA</span></dd>
+                  <dt>Temperatur</dt><dd>25,2 <span class="unit">°C</span></dd>
+                </dl>
+              </section>
+              <section class="card">
+                <div class="card-h"><span data-i="cpu"></span><h3 class="lbl">Motoren</h3></div>
+                <dl class="kv" style="margin:0">
+                  <dt>Hauptbürste</dt><dd>1 362 <span class="unit">rpm</span></dd>
+                  <dt>Sauger</dt><dd>8 400 <span class="unit">rpm</span></dd>
+                  <dt>Räder L · R</dt><dd>64 · 72 <span class="unit">%</span></dd>
+                </dl>
+              </section>
+            </div>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <div class="phones">
+    <div>
+      <p class="cap">Handy · Hell · 340 px</p>
+      <div class="app phone" data-theme="light" data-phone></div>
+    </div>
+    <div>
+      <p class="cap">Handy · Dunkel · 340 px</p>
+      <div class="app phone" data-theme="dark" data-phone></div>
+    </div>
+  </div>
+</div>
+
+<template id="phone">
+  <div class="top"><span class="logo" data-i="bot"></span><b class="lbl">Reksio</b><span class="pill info"><span class="lbl">Reinigt</span></span></div>
+  <div class="body">
+    <section class="card">
+      <div style="display:flex;align-items:end;gap:12px"><div class="big">47<span class="unit">%</span></div><div class="meta" style="padding-bottom:3px;flex:1" class="lbl">−1 985 mA · 25,2 °C</div><span data-i="batt"></span></div>
+      <div class="bar"><i style="width:47%"></i></div>
+      <div class="ctrls">
+        <button class="btn primary"><span data-i="pause"></span><span class="lbl">Pause</span></button>
+        <button class="btn"><span data-i="stop"></span><span class="lbl">Stopp</span></button>
+        <button class="btn"><span data-i="house"></span><span class="lbl">Basis</span></button>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><span data-i="map"></span><h3 class="lbl">OG</h3><span class="meta">18:32 · 42 m²</span></div>
+      <div class="mapwrap"><span data-map></span>
+        <div class="mapctl"><button class="btn icon sm" aria-label="Einpassen"><span data-i="fit"></span></button></div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><span data-i="history"></span><h3 class="lbl">Zuletzt</h3></div>
+      <div class="list">
+        <div class="li"><div><div class="t lbl">Gestern, 23:12</div><div class="s lbl">Haus · 1 Ladestopp</div></div><div class="n">58 m²</div><div class="n">2 h 04</div></div>
+      </div>
+    </section>
+  </div>
+  <nav class="bnav">
+    <a class="cur"><span data-i="dash"></span><span class="lbl">Übersicht</span></a>
+    <a><span data-i="map"></span><span class="lbl">Karte</span></a>
+    <a><span data-i="history"></span><span class="lbl">Verlauf</span></a>
+    <a><span data-i="cal"></span><span class="lbl">Zeitplan</span></a>
+    <a><span data-i="gear"></span><span class="lbl">Mehr</span></a>
+  </nav>
+</template>
+
+<script>
+// Lucide-Pfade (ISC), nur für das Mockup inline
+const I={
+ bot:'<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+ dash:'<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+ map:'<path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/>',
+ history:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+ cal:'<path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>',
+ pause:'<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+ stop:'<rect width="14" height="14" x="5" y="5" rx="2"/>',
+ house:'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+ batt:'<rect width="16" height="10" x="2" y="7" rx="2"/><line x1="22" x2="22" y1="11" y2="13"/><line x1="6" x2="6" y1="11" y2="13"/><line x1="10" x2="10" y1="11" y2="13"/>',
+ cpu:'<rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
+ refresh:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+ plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+ minus:'<path d="M5 12h14"/>',
+ fit:'<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>'
+};
+// Grundriss: Räume als Rechtecke, Spur als Bahnen, Reksio mit Blickrichtung
+function mapSvg(){
+  const rooms=[[20,20,150,110],[170,20,110,70],[170,90,110,100],[60,130,110,60]];
+  const free=rooms.map(r=>`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}" fill="var(--map-free)"/>`).join('');
+  const walls=`<path d="M20 20H280V190H60V130H20Z M170 20V75 M170 105V130 M170 90H230 M250 90H280 M60 130H120 M145 130H170" fill="none" stroke="var(--map-wall)" stroke-width="3" stroke-linejoin="round"/>`;
+  let lanes=[];for(let y=30;y<=120;y+=9){lanes.push(y%18===12?`M30 ${y}H160`:`M160 ${y}H30`)}
+  const pathD='M226 180 V150 H200 V128 H160 V30 '+lanes.slice(0,9).map((l,i)=>l.replace('M','L')).join(' ');
+  const path=`<path d="${pathD}" fill="none" stroke="var(--accent)" stroke-opacity=".55" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const zone=`<rect x="185" y="30" width="80" height="50" rx="2" fill="var(--cat-1)" fill-opacity=".18" stroke="var(--cat-1)" stroke-width="1.5"/><text x="225" y="59" text-anchor="middle" font-size="10" fill="var(--text-2)" font-family="inherit">Küche</text>`;
+  const nogo=`<path d="M200 120L260 175" stroke="var(--danger)" stroke-width="3" stroke-dasharray="6 4" stroke-linecap="round"/>`;
+  const dock=`<rect x="218" y="181" width="16" height="7" rx="2" fill="var(--ok)"/>`;
+  const robot=`<g transform="translate(160 102)"><circle r="9" fill="var(--accent)" stroke="var(--on-accent)" stroke-width="2"/><path d="M0 -4L5 2H-5Z" fill="var(--on-accent)" transform="rotate(90)"/></g>`;
+  return `<svg class="map" viewBox="0 0 300 210" role="img" aria-label="Karte OG">${free}${zone}${path}${walls}${nogo}${dock}${robot}</svg>`;
+}
+function spark(){
+  const pts=[100,98,95,92,88,85,81,77,73,69,65,62,58,55,51,47];
+  const w=300,h=48,step=w/(pts.length-1);
+  const d=pts.map((v,i)=>`${(i*step).toFixed(1)},${(h-4-(v/100)*(h-8)).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:48px;display:block" preserveAspectRatio="none" aria-label="Akkuverlauf"><polyline points="${d}" fill="none" stroke="var(--cat-1)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+document.querySelectorAll('[data-phone]').forEach(p=>p.append(document.getElementById('phone').content.cloneNode(true)));
+document.querySelectorAll('[data-map]').forEach(e=>e.outerHTML=mapSvg());
+document.querySelectorAll('[data-spark]').forEach(e=>e.outerHTML=spark());
+document.querySelectorAll('[data-i]').forEach(e=>{const s=`<svg class="i${e.hasAttribute('data-l')?' l':''}" viewBox="0 0 24 24" aria-hidden="true">${I[e.dataset.i]}</svg>`;if(e.classList.contains('logo')){e.innerHTML=s}else{e.outerHTML=s}});
+</script>
+</body>
+</html>
