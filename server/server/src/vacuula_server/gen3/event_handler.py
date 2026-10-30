@@ -25,6 +25,12 @@ def robot_data(serial: str, data: bytes):
     # remove last two bytes (\r\n)
     data = data[:-2]
 
+    if not data:
+        # empty line after the terminating zero-size chunk: robot closed the stream
+        logger.info("robot %s ended the stream", serial)
+        del robot_buffers[serial]
+        return
+
     if (chr(data[0]) != '{' and msg_size == 1):
         logger.debug("heartbeat from robot %s", serial)
         return

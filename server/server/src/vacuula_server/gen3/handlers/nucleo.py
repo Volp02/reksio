@@ -6,7 +6,7 @@ from vacuula_server.state import robot_connections
 from vacuula_server.handlers.events import notify_robots_changed
 from vacuula_server.gen3.utils import get_robot_serial
 from vacuula_server.db import get_session
-from vacuula_server.gen3.event_handler import robot_data
+from vacuula_server.gen3.event_handler import robot_data, robot_buffers
 from vacuula_server.models.robot import Robot
 from sqlalchemy import select
 from typing import TYPE_CHECKING
@@ -54,6 +54,7 @@ def nucleo_init(req: RouterHandler) -> None:
         pass
     finally:
         if robot_connections.get(serial) is conn:
+            robot_buffers.pop(serial, None)
             del robot_connections[serial]
             logger.info("Robot %s disconnected", serial)
             notify_robots_changed()
