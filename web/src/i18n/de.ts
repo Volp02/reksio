@@ -129,6 +129,7 @@ const de = {
         distance: 'Strecke',
         battery: 'Akku',
         recharges: 'Ladestopps',
+        path: 'Gefahrene Strecke',
         errors: 'Störungen',
     },
     schedule: {
@@ -289,7 +290,8 @@ const de = {
         overTemp: 'Übertemperatur',
         empty: 'Leer',
         newBattery: 'Neuer Akku',
-        newBatteryConfirm: 'Neuen Akku eintragen? Nur nach dem Einbau eines neuen Akkus.',
+        newBatteryConfirm: 'Neuen Akku eintragen? Setzt Ladeanzeige und Kalibrierung zurück. Nur nach dem Einbau eines neuen Akkus.',
+        newBatteryDone: 'Neuer Akku eingetragen. Die Ladeanzeige braucht ein paar Ladezyklen, bis sie wieder genau ist.',
     },
     codes: {
         alert_dust_bin_full: 'Staubbehälter voll',

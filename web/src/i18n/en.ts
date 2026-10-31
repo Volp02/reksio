@@ -132,6 +132,7 @@ const en: Shape<Dict> = {
         distance: 'Distance',
         battery: 'Battery',
         recharges: 'Recharges',
+        path: 'Path driven',
         errors: 'Incidents',
     },
     schedule: {
@@ -292,7 +293,8 @@ const en: Shape<Dict> = {
         overTemp: 'Over temperature',
         empty: 'Empty',
         newBattery: 'New battery',
-        newBatteryConfirm: 'Register a new battery? Only after installing a new battery.',
+        newBatteryConfirm: 'Register a new battery? Resets the charge gauge and calibration. Only after installing a new battery.',
+        newBatteryDone: 'New battery registered. The charge reading needs a few cycles to become accurate again.',
     },
     codes: {
         alert_dust_bin_full: 'Dust bin full',

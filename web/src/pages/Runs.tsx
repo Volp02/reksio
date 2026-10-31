@@ -1,12 +1,16 @@
-import { ChevronLeft, History } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronLeft, History, Route } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { useStore } from '../state/store'
-import { sessionFor, sortRuns, useEspSessions, useMapData, useMaps, useRunData, useRuns } from '../state/data'
+import { sessionFor, sortRuns, useEspSessions, useMapData, useMaps, useRunData, useRunPath, useRuns } from '../state/data'
 import { runStatsRows, runStatsShort } from './runStats'
 import { fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
-import { Card, Empty, KV, Label } from '../ui/ui'
+import { useTrail } from '../map/useLive'
+import { Card, Empty, IconButton, KV, Label } from '../ui/ui'
 import './pages.css'
+
+const PATH_KEY = 'reksio.runPath'
 
 export function Runs({ selected }: { selected?: string }) {
     const { t, locale } = useI18n()
@@ -20,6 +24,11 @@ export function Runs({ selected }: { selected?: string }) {
     const run = useRunData(s.serial, current)
     // jede Reinigung hat eine Bodenkarte mit derselben ID und demselben Raster
     const floor = useMapData(s.serial, current)
+    const session = current ? sessionOf(current) : undefined
+    const path = useRunPath(s.serial, current ? idToTs(current) : undefined, session?.summary?.time)
+    const trail = useTrail(floor.data, path.data)
+    const [showPath, setShowPath] = useState(() => localStorage.getItem(PATH_KEY) !== 'off')
+    const togglePath = () => setShowPath((v) => { localStorage.setItem(PATH_KEY, v ? 'off' : 'on'); return !v })
     const when = (id: string) => {
         const ts = idToTs(id)
         return ts ? fmtWhen(locale, s.server?.timezone, ts, s.now, t.overview, true) : id
@@ -49,7 +58,10 @@ export function Runs({ selected }: { selected?: string }) {
                 <Card className="runs-detail" title={when(current)}
                     icon={<a href="#/runs" className="btn btn--ghost btn--s btn--icon runs-back" aria-label={t.nav.back}><ChevronLeft /></a>}>
                     {floor.data
-                        ? <MapView data={floor.data} run={run.data} label={when(current)} />
+                        ? <MapView data={floor.data} run={run.data} label={when(current)} live={showPath ? trail : undefined}
+                            tools={trail && <div className="maptools-g">
+                                <IconButton size="s" icon={<Route />} label={t.runs.path} aria-pressed={showPath} onClick={togglePath} />
+                            </div>} />
                         : <Empty label={floor.loading || run.loading ? t.common.loading : t.map.noMap} />}
                     {runStatsRows(t, locale, sessionOf(current)).length > 0 && <KV rows={runStatsRows(t, locale, sessionOf(current))} />}
                 </Card>

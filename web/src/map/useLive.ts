@@ -1,9 +1,14 @@
 import { useMemo } from 'react'
-import type { MapData } from '../api/types'
+import type { MapData, Pose } from '../api/types'
 import { useStore } from '../state/store'
 import { currentRun, poseToMap, POSE_STALE_S, type MapPose } from './pose'
 
 export interface Live { robot?: MapPose & { stale: boolean }; trail: MapPose[] }
+
+/** gespeicherte Strecke einer Reinigung auf `map` (ohne Reksio) */
+export function useTrail(map: MapData | undefined, poses: Pose[] | undefined): Live | undefined {
+    return useMemo(() => (map?.dock && poses?.length ? { trail: poses.map((p) => poseToMap(map, p)!) } : undefined), [map, poses])
+}
 
 /** Live-Position und Spur der laufenden Fahrt auf `map`; leer, wenn gerade keine Fahrt läuft */
 export function useLive(map: MapData | undefined): Live | undefined {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, esp, gen3 } from '../api/client'
-import type { Boundary, EspSession, MapData, PersistentMap, RunSummary, ZoneHistory } from '../api/types'
+import type { Boundary, EspSession, MapData, PersistentMap, Pose, RunSummary, ZoneHistory } from '../api/types'
 
 // Karten und Reinigungen ändern sich selten: einfacher Cache pro Sitzung
 const cache = new Map<string, Promise<unknown>>()
@@ -45,6 +45,22 @@ export function useRuns(serial: string | undefined, version = 0) {
 
 export function useRunData(serial: string | undefined, id: string | undefined) {
     return useLoad<MapData>(serial && id ? `run:${serial}:${id}` : undefined, () => api.run(serial!, id!))
+}
+
+const RUN_MAX_S = 6 * 3600
+const RUN_GAP_S = 15 * 60
+
+/**
+ * Gefahrene Strecke einer Reinigung aus den gespeicherten Posen (bleiben dauerhaft auf dem Server).
+ * Ende aus der ESP-Sitzung (inkl. Ladestopps); ohne Sitzung bis zur ersten Pause von mehr als 15 min.
+ */
+export function useRunPath(serial: string | undefined, start: number | undefined, end: number | undefined) {
+    return useLoad<Pose[]>(serial && start ? `path:${serial}:${start}:${end ?? ''}` : undefined, async () => {
+        const poses = await api.poses(serial!, start! - 60, end ? end + 60 : start! + RUN_MAX_S)
+        if (end) return poses
+        const gap = poses.findIndex((p, i) => i > 0 && p.ts - poses[i - 1].ts > RUN_GAP_S)
+        return gap < 0 ? poses : poses.slice(0, gap)
+    })
 }
 
 /** Zonen und No-Go-Linien einer Karte; kommen vom Roboter, daher nur wenn er verbunden ist */

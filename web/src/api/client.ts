@@ -35,8 +35,8 @@ export const api = {
     telemetryLatest: (serial: string) => request<Telemetry>('GET', `/robot/${serial}/telemetry/latest`),
     telemetry: (serial: string, since: number, until?: number) =>
         request<Telemetry[]>('GET', `/robot/${serial}/telemetry?since=${since}${until ? `&until=${until}` : ''}`),
-    poses: (serial: string, since: number) =>
-        request<[number, number, number, number][]>('GET', `/robot/${serial}/poses?since=${since}`)
+    poses: (serial: string, since: number, until?: number) =>
+        request<[number, number, number, number][]>('GET', `/robot/${serial}/poses?since=${since}${until ? `&until=${until}` : ''}`)
             .then((rows) => rows.map(([ts, x, y, theta]): Pose => ({ ts, x, y, theta }))),
     /** Gen3: Name und „in Verwendung“ (der Roboter lädt nur aktivierte Karten) */
     updateMap: (serial: string, id: string, name: string, enabled: boolean) =>

@@ -62,6 +62,8 @@ export function BatterySettings() {
     const state = !charger ? none : charger.chargingActive ? b.charging : charger.extPwrPresent ? b.docked : b.onBattery
     const year = Number(version?.smartBatteryMfgDate?.split('-')[0])
     const mfgUnreliable = Number.isFinite(year) && year > new Date().getFullYear()
+    // NewBattery schaltet den Roboter kurz in den Testmodus: nicht während einer Reinigung
+    const cleaning = s.robot?.state !== undefined && s.robot.state !== 1
     const problems = charger && [
         charger.batteryFailure && b.failure, charger.batteryOverTemp && b.overTemp, charger.emptyFuel && b.empty,
     ].filter(Boolean) as string[]
@@ -109,7 +111,8 @@ export function BatterySettings() {
                         ? <span key="m" className="mono">{version.smartBatteryMfgDate}{mfgUnreliable ? ` (${b.unreliable})` : ''}</span> : none],
                 ]} />
                 <div className="actions">
-                    <Button size="s" variant="danger" label={b.newBattery} loading={busy} onClick={() => setConfirm(true)} />
+                    <Button size="s" variant="danger" label={b.newBattery} loading={busy} disabled={cleaning}
+                        onClick={() => setConfirm(true)} />
                 </div>
             </Card>
 
@@ -118,7 +121,7 @@ export function BatterySettings() {
                 onConfirm={async () => {
                     setConfirm(false)
                     setBusy(true)
-                    try { await esp.post('battery/new'); setToast(t.esp.saved) } catch { setToast(t.actions.failed) } finally { setBusy(false) }
+                    try { await esp.post('battery/new'); setToast(b.newBatteryDone); load() } catch { setToast(t.actions.failed) } finally { setBusy(false) }
                 }} />
             <Toast text={toast} onClose={() => setToast(undefined)} />
         </div>

@@ -160,8 +160,8 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
                 const pts = robot ? [...live.trail.slice(0, -1), robot] : live.trail
                 pts.forEach((p, i) => (i ? g.lineTo(x + p.px * scale, y + p.py * scale) : g.moveTo(x + p.px * scale, y + p.py * scale)))
                 g.strokeStyle = colors.path
-                g.globalAlpha = 0.7
-                g.lineWidth = Math.max(2, Math.min(6, scale * 0.6))
+                g.globalAlpha = live.robot ? 0.7 : 0.85
+                g.lineWidth = live.robot ? Math.max(2, Math.min(6, scale * 0.6)) : Math.max(1.25, Math.min(3, scale * 0.3))
                 g.lineJoin = 'round'
                 g.lineCap = 'round'
                 g.stroke()
