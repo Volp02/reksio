@@ -1,10 +1,11 @@
 import { ChevronLeft, History } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { useStore } from '../state/store'
-import { sortRuns, useMapData, useMaps, useRunData, useRuns } from '../state/data'
+import { sessionFor, sortRuns, useEspSessions, useMapData, useMaps, useRunData, useRuns } from '../state/data'
+import { runStatsRows, runStatsShort } from './runStats'
 import { fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
-import { Card, Empty, Label } from '../ui/ui'
+import { Card, Empty, KV, Label } from '../ui/ui'
 import './pages.css'
 
 export function Runs({ selected }: { selected?: string }) {
@@ -12,6 +13,8 @@ export function Runs({ selected }: { selected?: string }) {
     const s = useStore()
     const runs = useRuns(s.serial)
     const maps = useMaps(s.serial)
+    const sessions = useEspSessions()
+    const sessionOf = (id: string) => sessionFor(sessions.data, idToTs(id))
     const list = sortRuns(runs.data)
     const current = selected ?? list[0]?.id
     const run = useRunData(s.serial, current)
@@ -34,7 +37,8 @@ export function Runs({ selected }: { selected?: string }) {
                             <a className="row" href={`#/runs/${encodeURIComponent(r.id)}`} aria-current={r.id === current ? 'true' : undefined}>
                                 <span className="row-main">
                                     <Label className="row-t">{when(r.id)}</Label>
-                                    {mapName(r.persistent_map) && <Label className="row-s">{mapName(r.persistent_map)!}</Label>}
+                                    {(mapName(r.persistent_map) || runStatsShort(locale, sessionOf(r.id))) &&
+                                        <Label className="row-s">{[mapName(r.persistent_map), runStatsShort(locale, sessionOf(r.id))].filter(Boolean).join(' · ')}</Label>}
                                 </span>
                             </a>
                         </li>
@@ -47,6 +51,7 @@ export function Runs({ selected }: { selected?: string }) {
                     {floor.data
                         ? <MapView data={floor.data} run={run.data} label={when(current)} />
                         : <Empty label={floor.loading || run.loading ? t.common.loading : t.map.noMap} />}
+                    {runStatsRows(t, locale, sessionOf(current)).length > 0 && <KV rows={runStatsRows(t, locale, sessionOf(current))} />}
                 </Card>
             )}
         </div>

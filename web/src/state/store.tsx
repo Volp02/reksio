@@ -18,6 +18,8 @@ export interface Store {
     pose?: Pose
     /** Posen der letzten Stunden (für die Spur der laufenden Fahrt) */
     poses: Pose[]
+    /** letzte Server-Meldung (z. B. Staubbehälter geleert und quittiert) */
+    notice?: { type: string; ts: number }
     /** Sekundentakt für Frische-Anzeigen */
     now: number
     refresh: () => void
@@ -39,6 +41,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const [history, setHistory] = useState<Telemetry[]>([])
     const [pose, setPose] = useState<Pose>()
     const [poses, setPoses] = useState<Pose[]>([])
+    const [notice, setNotice] = useState<{ type: string; ts: number }>()
     const [now, setNow] = useState(() => Date.now() / 1000)
     const [reload, setReload] = useState(0)
 
@@ -69,7 +72,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         es.addEventListener('telemetry', (e) => {
             const t = JSON.parse((e as MessageEvent).data) as Telemetry & { serial: string }
             if (t.serial !== serialRef.current) return
-            setTelemetry(t)
+            // seltene Felder (Wartung, Roboter-WLAN, Zähler) kommen nur alle 5 min: letzten Wert behalten
+            setTelemetry((prev) => ({
+                ...t,
+                maintenance: t.maintenance ?? prev?.maintenance,
+                robotWifi: t.robotWifi ?? prev?.robotWifi,
+                warranty: t.warranty ?? prev?.warranty,
+            }))
             setHistory((h) => [...h.filter((x) => x.ts > t.ts - HISTORY_S), t])
         })
         es.addEventListener('pose', (e) => {
@@ -77,6 +86,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             if (p.serial !== serialRef.current) return
             setPose(p)
             setPoses((ps) => [...ps.filter((x) => x.ts > p.ts - HISTORY_S), p])
+        })
+        es.addEventListener('notice', (e) => {
+            const n = JSON.parse((e as MessageEvent).data) as { serial: string; type: string; ts: number }
+            if (n.serial === serialRef.current) setNotice({ type: n.type, ts: n.ts })
         })
         es.onopen = () => setServerError(false)
         return () => es.close()
@@ -125,7 +138,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const value: Store = {
         server, serverError, robots, serial,
         name: (serial && robots?.[serial]?.name) || 'Reksio',
-        connected, robot, robotAt, telemetry, history, pose, poses, now,
+        connected, robot, robotAt, telemetry, history, pose, poses, notice, now,
         refresh: () => setReload((n) => n + 1),
         refreshRobot,
     }

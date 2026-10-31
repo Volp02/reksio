@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Bot, CalendarClock, ChevronLeft, Cpu, WifiOff, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Sun } from 'lucide-react'
 import { useI18n, fill } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
 import { espProblem, robotStatus } from '../status'
 import { fmtTime } from '../format'
 import { useTheme } from '../ui/theme'
-import { IconButton, Label, Pill } from '../ui/ui'
+import { IconButton, Label, Pill, Toast } from '../ui/ui'
 import './shell.css'
 
 export type Route = 'overview' | 'map' | 'runs' | 'schedule' | 'settings'
@@ -25,6 +25,11 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
     const asOf = Math.max(store.robotAt ?? 0, store.telemetry?.ts ?? 0)
     const espFresh = isFresh(store.telemetry?.ts, store.now, TELEMETRY_STALE_S)
     const title = sub?.title ?? t.nav[route]
+    // Meldungen des Servers kurz anzeigen
+    const [toast, setToast] = useState<string>()
+    useEffect(() => {
+        if (store.notice?.type === 'dustbin_emptied') setToast(t.maint.emptied)
+    }, [store.notice, t])
 
     const themeBtn = (
         <IconButton icon={resolved === 'dark' ? <Sun /> : <Moon />} label={resolved === 'dark' ? t.common.toLight : t.common.toDark} onClick={toggle} />
@@ -76,6 +81,8 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
                 {store.serverError && <div className="banner" role="alert">{t.common.serverUnreachable}</div>}
                 {children}
             </main>
+
+            <Toast text={toast} onClose={() => setToast(undefined)} />
 
             <nav className="bnav">
                 {NAV.map((r) => (

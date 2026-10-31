@@ -2,7 +2,7 @@ import { Cpu } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
 import { fmtNumber, fmtTime } from '../format'
-import { Card, KV, Value } from '../ui/ui'
+import { Card, KV, Label, Value } from '../ui/ui'
 
 /** Live-Werte vom ESP: Zustand, Motoren, Räder (Einstellungen und optional Übersicht) */
 export function DiagnosticsCard({ className = '' }: { className?: string }) {
@@ -13,6 +13,14 @@ export function DiagnosticsCard({ className = '' }: { className?: string }) {
     const m = fresh ? tel?.motors : undefined
     const none = t.common.none
     const num = (v: number | undefined, unit: string) => (v === undefined ? none : <Value value={fmtNumber(locale, v)} unit={unit} />)
+    const d = t.settings
+    const sn = fresh ? tel?.sensors : undefined
+    const wifi = tel?.robotWifi
+    const yesNo = (v: boolean | undefined) => (v === undefined ? none : v ? t.bat.yes : t.bat.no)
+    const bumpers = sn && [
+        sn.bumperLeftSide && `${d.left} ${t.map.side}`, sn.bumperLeftFront && `${d.left} ${t.map.front}`, sn.bumperLeftLds && `${d.left} LDS`,
+        sn.bumperRightSide && `${d.right} ${t.map.side}`, sn.bumperRightFront && `${d.right} ${t.map.front}`, sn.bumperRightLds && `${d.right} LDS`,
+    ].filter(Boolean).join(', ')
     const pair = (a: number | undefined, b: number | undefined, unit: string) =>
         a === undefined || b === undefined ? none : <Value value={`${fmtNumber(locale, a)} · ${fmtNumber(locale, b)}`} unit={unit} />
 
@@ -27,6 +35,13 @@ export function DiagnosticsCard({ className = '' }: { className?: string }) {
                 [t.settings.sideBrush, num(m?.sideBrushMA, 'mA')],
                 [t.settings.wheelSpeed, pair(m?.leftWheelSpeed, m?.rightWheelSpeed, 'mm/s')],
                 [t.settings.wheelLoad, pair(m?.leftWheelLoad, m?.rightWheelLoad, '%')],
+                [d.dustbin, sn ? (sn.dustbinIn ? d.inserted : d.missing) : none],
+                [d.wheelsLifted, sn ? `${yesNo(sn.leftWheelExtended)} · ${yesNo(sn.rightWheelExtended)}` : none],
+                [d.bumper, sn ? (bumpers || d.free) : none],
+                [d.dcJack, yesNo(sn?.dcJackIn)],
+                [d.robotWifi, wifi?.ssid ? <Label key="w">{wifi.ssid}</Label> : none],
+                [d.robotIp, <span key="i" className="mono">{wifi?.ip ?? none}</span>],
+                [d.cloudLink, wifi ? yesNo(wifi.cloud) : none],
             ]} />
         </Card>
     )

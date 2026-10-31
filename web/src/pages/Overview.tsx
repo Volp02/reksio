@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from 'react'
 import {
-    BatteryCharging, Shapes, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, History, House, Map as MapIcon, Pause, Play, Square, TriangleAlert,
+    BatteryCharging, Shapes, Trash2, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, History, House, Map as MapIcon, Pause, Play, Square, TriangleAlert,
 } from 'lucide-react'
 import { esp, gen3 } from '../api/client'
 import { CleaningCategory, CleaningMode, NavigationMode } from '../api/types'
 import { fill, useI18n } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
-import { activeMap, sortRuns, useBoundaries, useMapData, useMaps, useRuns } from '../state/data'
+import { activeMap, sessionFor, sortRuns, useBoundaries, useEspSessions, useMapData, useMaps, useRuns } from '../state/data'
+import { runStatsShort } from './runStats'
 import { batteryPercent, batteryTone, cleaningSince, dischargeRate, espProblem, isCleaning, problemText, robotStatus } from '../status'
 import { fmtDuration, fmtNumber, fmtTime, fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
@@ -26,6 +27,7 @@ export function Overview() {
             <div className="ov-col ov-col--side">
                 <ControlCard />
                 <BatteryCard />
+                <MaintenanceCard />
                 {prefs.diagnostics && <DiagnosticsCard className="ov-diag" />}
             </div>
         </div>
@@ -204,6 +206,7 @@ function RunsCard() {
     const s = useStore()
     const runs = useRuns(s.serial)
     const maps = useMaps(s.serial)
+    const sessions = useEspSessions()
     const list = sortRuns(runs.data).slice(0, 3)
     const mapName = (id: string | null) => maps.data?.find((m) => m.id === id)?.name
     return (
@@ -222,6 +225,7 @@ function RunsCard() {
                                             <Label className="row-t">{ts ? fmtWhen(locale, s.server?.timezone, ts, s.now, t.overview, true) : r.id}</Label>
                                             {mapName(r.persistent_map) && <Label className="row-s">{mapName(r.persistent_map)!}</Label>}
                                         </span>
+                                        {runStatsShort(locale, sessionFor(sessions.data, ts)) && <span className="row-n">{runStatsShort(locale, sessionFor(sessions.data, ts))}</span>}
                                     </a>
                                 </li>
                             )
@@ -232,3 +236,31 @@ function RunsCard() {
     )
 }
 
+
+/** Füllstand des Staubbehälters (Laufzeit seit dem Leeren gegen das Erinnerungsintervall) und Wartungsintervalle */
+function MaintenanceCard() {
+    const { t, locale } = useI18n()
+    const s = useStore()
+    const m = s.telemetry?.maintenance
+    if (!m || m.binRuntimeMin == null) return null
+    const max = m.binReminderMin || 0
+    const pct = max ? Math.min(100, (m.binRuntimeMin / max) * 100) : 0
+    const tone = pct >= 100 ? 'danger' : pct >= 80 ? 'warn' : 'neutral'
+    return (
+        <Card className={`ov-maint tone-${tone}`} icon={<Trash2 />} title={t.maint.title}>
+            <div className="ov-maint-bin">
+                <div className="ov-maint-row">
+                    <Label className="ov-maint-l">{t.maint.bin}</Label>
+                    <span className="meta">{max ? fill(t.maint.binOf, { used: fmtNumber(locale, m.binRuntimeMin), max: fmtNumber(locale, max) }) : fmtNumber(locale, m.binRuntimeMin)}</span>
+                </div>
+                {max > 0 && <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={max} aria-valuenow={m.binRuntimeMin} aria-label={t.maint.bin}><i style={{ width: `${pct}%` }} /></div>}
+            </div>
+            <KV rows={[
+                ...(m.binFullCount != null ? [[t.maint.binFull, fill(t.maint.binTimes, { n: fmtNumber(locale, m.binFullCount) })] as [string, ReactNode]] : []),
+                ...(m.filterChangeS ? [[t.maint.filter, fmtDuration(m.filterChangeS)] as [string, ReactNode]] : []),
+                ...(m.brushChangeS ? [[t.maint.brush, fmtDuration(m.brushChangeS)] as [string, ReactNode]] : []),
+                ...(s.telemetry?.warranty ? [[t.maint.cleaningTotal, fmtDuration(s.telemetry.warranty.cumulativeCleaningTimeSeconds)] as [string, ReactNode]] : []),
+            ]} />
+        </Card>
+    )
+}

@@ -90,6 +90,21 @@ export interface Telemetry {
         batteryCurrentMA: number
         batteryTemperatureC: number
     } | null
+    /** GetDigitalSensors (bei jeder Probe) */
+    sensors?: {
+        dustbinIn: boolean; dcJackIn: boolean; leftWheelExtended: boolean; rightWheelExtended: boolean
+        bumperLeftSide: boolean; bumperLeftFront: boolean; bumperLeftLds: boolean
+        bumperRightSide: boolean; bumperRightFront: boolean; bumperRightLds: boolean
+    } | null
+    /** GetUserSettings-Zähler (alle 5 min) */
+    maintenance?: {
+        binRuntimeMin: number | null; binFullCount: number | null; binReminderMin: number | null
+        filterChangeS: number | null; brushChangeS: number | null
+    } | null
+    /** WLAN des Roboters selbst (alle 5 min) */
+    robotWifi?: { ssid: string | null; bssid: string | null; ip: string | null; signal: string | null; cloud: boolean } | null
+    /** Lebensdauerzähler (alle 5 min) */
+    warranty?: { cumulativeCleaningTimeSeconds: number; cumulativeBatteryCycles: number } | null
     motors: {
         brushRPM: number
         brushMA: number
@@ -139,4 +154,15 @@ export interface Boundary {
     enabled?: boolean
     vertices: [number, number][]
     relevancy?: [number, number]
+}
+
+/** ESP-History-Sitzung (OpenNeato /api/history), Zusammenfassung einer Fahrt */
+export interface EspSession {
+    name: string
+    recording: boolean
+    session: { time: number; battery: number } | null
+    summary: {
+        time: number; duration: number; recharges: number; distanceTraveled: number; areaCovered: number
+        errorsDuringClean: number; batteryStart: number; batteryEnd: number
+    } | null
 }

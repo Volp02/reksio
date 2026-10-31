@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api, gen3 } from '../api/client'
-import type { Boundary, MapData, PersistentMap, RunSummary } from '../api/types'
+import { api, esp, gen3 } from '../api/client'
+import type { Boundary, EspSession, MapData, PersistentMap, RunSummary } from '../api/types'
 
 // Karten und Reinigungen ändern sich selten: einfacher Cache pro Sitzung
 const cache = new Map<string, Promise<unknown>>()
@@ -61,4 +61,20 @@ export function activeMap(maps: PersistentMap[] | undefined): PersistentMap | un
 
 export function sortRuns(runs: RunSummary[] | undefined): RunSummary[] {
     return [...(runs ?? [])].sort((a, b) => b.id.localeCompare(a.id))
+}
+
+/** Fahrten-Zusammenfassungen des ESP (Dauer, Fläche, Strecke, Akku) */
+export function useEspSessions(version = 0) {
+    return useLoad<EspSession[]>('esp-history', () => esp.get<EspSession[]>('history'), version)
+}
+
+/** ESP-Sitzung zu einer Reinigung: Start innerhalb von 5 min um die Run-ID (= Startzeit) */
+export function sessionFor(sessions: EspSession[] | undefined, runTs: number | undefined): EspSession | undefined {
+    if (!sessions || runTs === undefined) return undefined
+    let best: EspSession | undefined
+    for (const s of sessions) {
+        const t = s.session?.time ?? Number(s.name.split('.')[0])
+        if (Math.abs(t - runTs) <= 300 && (!best || Math.abs(t - runTs) < Math.abs((best.session?.time ?? 0) - runTs))) best = s
+    }
+    return best
 }
