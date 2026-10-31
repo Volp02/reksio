@@ -28,7 +28,7 @@
 .side-foot { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); padding: var(--s-3) 8px 4px; border-top: 1px solid var(--border); }
 .side-esp { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-small); color: var(--text-2); max-width: 100%; }
 .side-esp .lucide { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
-.side-esp.is-stale { color: var(--text-3); }
+.side-esp.is-offline { color: var(--warn-text); background: var(--warn-soft); border-radius: var(--r-full); padding: 2px 10px 2px 8px; font-weight: 500; }
 
 .topbar { display: none; }
 .bnav { display: none; }

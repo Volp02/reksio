@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bot, CalendarClock, ChevronLeft, Cpu, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Sun } from 'lucide-react'
+import { Bot, CalendarClock, ChevronLeft, Cpu, WifiOff, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Sun } from 'lucide-react'
 import { useI18n, fill } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
 import { espProblem, robotStatus } from '../status'
@@ -50,8 +50,9 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
                 <div className="side-foot">
                     <Pill tone={store.connected ? 'ok' : 'neutral'} label={store.connected ? t.common.connected : t.common.offline} />
                     {store.telemetry && (
-                        <div className={`side-esp${espFresh ? '' : ' is-stale'}`}>
-                            <Cpu /><Label>{`ESP · ${fmtTime(locale, tz, store.telemetry.ts, true)}`}</Label>
+                        <div className={`side-esp${espFresh ? '' : ' is-offline'}`} title={`ESP · ${fmtTime(locale, tz, store.telemetry.ts, true)}`}>
+                            {espFresh ? <Cpu /> : <WifiOff />}
+                            <Label>{espFresh ? `ESP · ${fmtTime(locale, tz, store.telemetry.ts, true)}` : `${t.esp.offline} · ${fmtTime(locale, tz, store.telemetry.ts)}`}</Label>
                         </div>
                     )}
                 </div>

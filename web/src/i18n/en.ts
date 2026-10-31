@@ -170,6 +170,7 @@ const en: Shape<Dict> = {
     },
     esp: {
         title: 'ESP',
+        offline: 'ESP offline',
         connection: 'Connection',
         address: 'Address',
         network: 'Wi-Fi',

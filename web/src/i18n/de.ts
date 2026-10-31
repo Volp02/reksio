@@ -167,6 +167,7 @@ const de = {
     },
     esp: {
         title: 'ESP',
+        offline: 'ESP offline',
         connection: 'Verbindung',
         address: 'Adresse',
         network: 'WLAN',
