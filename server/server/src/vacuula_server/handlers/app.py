@@ -17,6 +17,7 @@ import queue
 import os
 from vacuula_server.gen4.handlers import robot_send_request
 from vacuula_server import boundary_backup, cleaning_log, zone_queue
+from vacuula_server.handlers.app_download import apk_info
 from vacuula_server.server_tz import server_timezone, utc_offset_minutes
 
 from typing import TYPE_CHECKING, Sequence
@@ -41,6 +42,7 @@ def get_server_info(req: RouterHandler) -> None:
    
         "timezone": tz,
         "utc_offset_minutes": utc_offset_minutes(tz),
+        "android_app": apk_info(),
     })
 
 

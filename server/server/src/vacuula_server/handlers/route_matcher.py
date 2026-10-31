@@ -9,6 +9,7 @@ from typing import Callable, Optional, Tuple, List
 from .app import get_robots, get_maps, get_map, get_run, post_map, delete_map, post_robot, get_runs, connect_robot, post_robot_command, get_server_info
 from .events import get_events
 from .telemetry import get_telemetry, get_telemetry_latest, get_poses
+from .app_download import get_apk
 from .esp import get_esp, put_esp, proxy_esp
 from .zones import get_zones, post_zones, delete_zones, get_boundary_backups, get_zone_history
 from .plans import get_plans, put_plans
@@ -56,6 +57,7 @@ APP_ROUTES: List[Tuple[str, str, Handler]] = [
     ("GET", "/api/log", get_log),
     ("GET", "/api/log/full", get_log_full),
     ("GET", "/api/server", get_server_info),
+    ("GET", "/api/app/reksio.apk", get_apk),
     ("GET", "/api/robots", get_robots),
     ("GET", "/api/esp", get_esp),
     ("PUT", "/api/esp", put_esp),
