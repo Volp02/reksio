@@ -11,6 +11,7 @@ from .events import get_events
 from .telemetry import get_telemetry, get_telemetry_latest, get_poses
 from .esp import get_esp, put_esp, proxy_esp
 from .zones import get_zones, post_zones, delete_zones, get_boundary_backups, get_zone_history
+from .plans import get_plans, put_plans
 from vacuula_server.handlers.setup import get_cert, get_log, get_log_full
 
 #gen4
@@ -68,6 +69,8 @@ APP_ROUTES: List[Tuple[str, str, Handler]] = [
     ("POST", r"/api/robot/(.+)/maps/(.+)/unuse", gen4.post_update_floorplan_in_unuse),
     ("POST", r"/api/robot/(.+)/maps/(.+)", post_map),
     ("DELETE", r"/api/robot/(.+)/maps/(.+)", delete_map),
+    ("GET", r"/api/robot/([^/]+)/plans", get_plans),
+    ("PUT", r"/api/robot/([^/]+)/plans", put_plans),
     ("GET", r"/api/robot/(.+)/zones", get_zones),
     ("POST", r"/api/robot/(.+)/zones", post_zones),
     ("DELETE", r"/api/robot/(.+)/zones", delete_zones),
