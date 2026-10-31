@@ -282,6 +282,10 @@ void Scheduler::handleAutoRestart(const Settings& s, int day, int nowMins) {
 }
 
 void Scheduler::tick() {
+#ifdef HEADLESS
+    // Reksio: der ESP startet keine Reinigungen und verschickt nichts, er stellt nur ein und liest aus
+    return;
+#endif
     handlePendingCleanAfterRestart();
 
     const Settings& s = settings.get();

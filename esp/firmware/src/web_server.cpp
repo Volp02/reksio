@@ -78,7 +78,9 @@ void WebServer::begin() {
 #endif
 
     registerApiRoutes();
+#ifndef HEADLESS
     registerManualRoutes();
+#endif
     registerLogRoutes();
     registerSystemRoutes();
     registerSettingsRoutes();
@@ -109,16 +111,21 @@ void WebServer::registerApiRoutes() {
     // All parameterized actions use query strings: resource URL identifies the
     // command, query params carry arguments (mirrors Neato serial protocol).
 
+#ifndef HEADLESS
+    // Reksio headless: keine Befehle, die den Roboter bewegen oder Reinigungen steuern
     registerPostRoute("/api/clean", neato, &NeatoSerial::clean, {"action"});
     registerPostRoute("/api/sound", neato, &NeatoSerial::playSound, {"id"});
     registerPostRoute("/api/power", neato, &NeatoSerial::powerControl, {"action"});
     registerPostRoute("/api/lidar/rotate", neato, &NeatoSerial::setLdsRotation, {"enable"});
+#endif
     registerPostRoute("/api/user-settings", neato, &NeatoSerial::setUserSetting, {"key", "value"});
     registerPostRoute("/api/clear-errors", neato, &NeatoSerial::clearErrors, {});
     registerPostRoute("/api/battery/new", neato, &NeatoSerial::newBattery, {});
+#ifndef HEADLESS
     registerGetRoute("/api/schedule/next", scheduler, &Scheduler::getNextScheduleJson);
     registerPostRoute("/api/schedule/next", scheduler, &Scheduler::requestSkipNextClean);
     registerDeleteRoute("/api/schedule/next", scheduler, &Scheduler::cancelSkipNextClean);
+#endif
 
     // Serial endpoint — send arbitrary serial command, returns raw response.
     // Always available (no debug gate — useful for diagnostics without enabling verbose logging).
@@ -138,6 +145,14 @@ void WebServer::registerApiRoutes() {
             sendError(request, 400, "empty cmd");
             return;
         }
+#ifdef HEADLESS
+        // nur lesende Befehle (Get…), z. B. GetRobotPos für die Live-Karte
+        if (!cmd.substring(0, 3).equalsIgnoreCase("get")) {
+            logger.logRequest(HTTP_POST, "/api/serial", 403, millis() - startMs);
+            sendError(request, 403, "read-only");
+            return;
+        }
+#endif
 
         auto weak = request->pause();
         bool ok = neato.sendRaw(cmd, [this, weak, startMs](bool /*success*/, const String& response) {
@@ -297,6 +312,7 @@ void WebServer::registerSettingsRoutes() {
                         return 200;
                     });
 
+#ifndef HEADLESS
     // POST /api/notifications/test?topic=<topic> — send a test notification
     loggedRoute("/api/notifications/test", HTTP_POST, [this](AsyncWebServerRequest *request) -> int {
         if (!request->hasParam("topic")) {
@@ -312,6 +328,8 @@ void WebServer::registerSettingsRoutes() {
         sendOk(request);
         return 200;
     });
+
+#endif
 
     LOG("WEB", "Settings routes registered");
 }
