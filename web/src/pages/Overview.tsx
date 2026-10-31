@@ -14,9 +14,10 @@ import { MapView } from '../map/MapView'
 import { Legend } from '../map/Legend'
 import { useLive } from '../map/useLive'
 import { BatteryChart } from './BatteryChart'
-import { Button, Card, Confirm, Empty, IconButton, KV, Label, Pill, Segmented, Toast, Value } from '../ui/ui'
+import { Button, Card, Confirm, Empty, IconButton, KV, Label, Pill, Toast, Value } from '../ui/ui'
 import { getPrefs, setPrefs, usePrefs } from '../state/prefs'
 import { DiagnosticsCard } from './Diagnostics'
+import { CleanModes } from './CleanModes'
 import './overview.css'
 
 export function Overview() {
@@ -67,7 +68,6 @@ function ControlCard() {
         }
     }
 
-    const prefs = usePrefs()
     // Cloud-Fehler/-Hinweis vor ESP-Meldung; ESP-Meldungen kommen per GetErr direkt vom Roboter
     const cloud = r?.error ? problemText(t, r.error) : r?.alert ? problemText(t, r.alert) : undefined
     const espShown = espP && espP.code !== dismissed ? espP : undefined
@@ -102,20 +102,9 @@ function ControlCard() {
                     loading={busy === 'dock'} disabled={!av?.goToBase || (!!busy && busy !== 'dock')}
                     onClick={() => send('dock', () => gen3.sendToBase(s.serial!))} />
             </div>
-            {!mode && (
-                <div className="ov-modes">
-                    <div className="field"><Label className="field-l">{t.settings.power}</Label>
-                        <Segmented<string> label={t.settings.power} value={String(prefs.mode)} onChange={(v) => setPrefs({ mode: Number(v) })} options={[
-                            { value: String(CleaningMode.ECO), label: t.overview.eco }, { value: String(CleaningMode.TURBO), label: t.overview.turbo }]} />
-                    </div>
-                    <div className="field"><Label className="field-l">{t.settings.navigation}</Label>
-                        <Segmented<string> label={t.settings.navigation} value={String(prefs.navigation)} onChange={(v) => setPrefs({ navigation: Number(v) })} options={[
-                            { value: String(NavigationMode.NORMAL), label: t.overview.normalNav },
-                            { value: String(NavigationMode.EXTRA_CARE), label: t.overview.extraCare },
-                            { value: String(NavigationMode.DEEP), label: t.overview.deep }]} />
-                    </div>
-                </div>
-            )}
+            {!mode && <CleanModes />}
+            {s.zoneQueue && <a className="ov-queue" href="#/map"><Shapes /><Label>{fill(t.zones.step, { i: Math.min(s.zoneQueue.index + 1, s.zoneQueue.zones.length), n: s.zoneQueue.zones.length })
+                + (s.zoneQueue.zones[s.zoneQueue.index]?.name ? ` · ${s.zoneQueue.zones[s.zoneQueue.index].name}` : '')}</Label></a>}
             {(mode || since) && (
                 <KV rows={[
                     ...(mode ? [[t.overview.mode, <Label key="m">{mode}</Label>] as [string, ReactNode]] : []),

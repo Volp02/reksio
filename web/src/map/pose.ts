@@ -4,7 +4,7 @@ import type { MapData, Pose } from '../api/types'
  * Pose (Meter, Ursprung = Basis beim Abdocken) → Kartenpixel. Ermittelt in docs/step0-koordinaten.md:
  * gleiche Umrechnung für jede Karte mit derselben Basis, gemessen 0 ± 1° Drehung.
  */
-const PX_PER_M = 25.5
+export const PX_PER_M = 25.5
 const DOCK_OFFSET: [number, number] = [10.2, -2.3]
 
 export interface MapPose { px: number; py: number; /** Blickrichtung im Bild, Bogenmaß */ heading: number }

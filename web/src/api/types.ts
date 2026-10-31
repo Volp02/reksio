@@ -156,6 +156,21 @@ export interface Boundary {
     relevancy?: [number, number]
 }
 
+/** Zonen nacheinander reinigen: Warteschlange im Server */
+export interface ZoneQueue {
+    mapId: string
+    zones: { id: string; name: string }[]
+    /** aktuelle bzw. als Nächstes startende Zone */
+    index: number
+    mode: CleaningMode
+    navigationMode: NavigationMode
+    status: 'cleaning' | 'waiting'
+    since: number
+    busy: boolean
+    /** warum die nächste Zone noch nicht startet */
+    reason: 'charging' | 'error' | 'blocked' | null
+}
+
 /** ESP-History-Sitzung (OpenNeato /api/history), Zusammenfassung einer Fahrt */
 export interface EspSession {
     name: string

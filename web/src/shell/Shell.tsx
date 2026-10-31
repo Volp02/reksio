@@ -28,7 +28,13 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
     // Meldungen des Servers kurz anzeigen
     const [toast, setToast] = useState<string>()
     useEffect(() => {
-        if (store.notice?.type === 'dustbin_emptied') setToast(t.maint.emptied)
+        const text = ({
+            dustbin_emptied: t.maint.emptied,
+            zones_done: t.zones.finished,
+            zones_failed: t.zones.failed,
+            zones_stopped: t.zones.stoppedBusy,
+        } as Record<string, string>)[store.notice?.type ?? '']
+        if (text) setToast(text)
     }, [store.notice, t])
 
     const themeBtn = (

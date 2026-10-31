@@ -30,6 +30,28 @@ function glidePose(a: Glide, now: number): MapPose | undefined {
 
 interface View { scale: number; x: number; y: number }
 
+/** Umrechnung zwischen Bildschirm (CSS-Pixel im Kartenfeld) und normierten Kartenkoordinaten (0..1) */
+export interface MapViewport {
+    toScreen: (p: [number, number]) => [number, number]
+    toMap: (x: number, y: number) => [number, number]
+    /** Kartenzellen (Breite, Höhe) und CSS-Pixel pro Zelle */
+    cells: [number, number]
+    scale: number
+    /** Mitte des sichtbaren Ausschnitts */
+    center: () => [number, number]
+}
+
+/** Antippen und Ziehen auf der Karte (Zonen wählen, Eckpunkte verschieben) */
+export interface MapInteraction {
+    /** Zeiger gedrückt; true: der folgende Zug gehört dem Aufrufer statt dem Verschieben der Karte */
+    grab?: (x: number, y: number, vp: MapViewport) => boolean
+    drag?: (x: number, y: number, vp: MapViewport) => void
+    release?: () => void
+    tap?: (x: number, y: number, vp: MapViewport) => void
+    /** zusätzlich zeichnen, über Zonen und unter Reksio */
+    overlay?: (g: CanvasRenderingContext2D, vp: MapViewport) => void
+}
+
 interface Props {
     data: MapData
     /** gefahrene Spur, gleiches Raster wie `data` */
@@ -40,9 +62,14 @@ interface Props {
     label: string
     controls?: 'full' | 'fit'
     fill?: boolean
+    interact?: MapInteraction
+    /** aktuelle Umrechnung für den Aufrufer (z. B. neue Zone in der Bildmitte) */
+    viewportRef?: { current?: () => MapViewport }
 }
 
-export function MapView({ data, run, boundaries, live, label, controls = 'full', fill = false }: Props) {
+const TAP_PX = 8 // weiter bewegt: Verschieben statt Antippen
+
+export function MapView({ data, run, boundaries, live, label, controls = 'full', fill = false, interact, viewportRef }: Props) {
     const { t } = useI18n()
     const { resolved } = useTheme()
     const wrap = useRef<HTMLDivElement>(null)
@@ -66,6 +93,24 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
         }
     }, [grid, colors])
     const bounds = grid.bounds
+    const interactRef = useRef(interact)
+    interactRef.current = interact
+
+    const viewport = useCallback((): MapViewport => {
+        const { scale, x, y } = view.current
+        const sx = grid.width * scale, sy = grid.height * scale
+        return {
+            toScreen: ([u, v]) => [x + u * sx, y + v * sy],
+            toMap: (px, py) => [(px - x) / sx, (py - y) / sy],
+            cells: [grid.width, grid.height],
+            scale,
+            center: () => {
+                const el = wrap.current
+                return el ? [(el.clientWidth / 2 - x) / sx, (el.clientHeight / 2 - y) / sy] : [0.5, 0.5]
+            },
+        }
+    }, [grid])
+    if (viewportRef) viewportRef.current = viewport
 
     const draw = useCallback(() => {
         cancelAnimationFrame(frame.current)
@@ -93,6 +138,7 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             }
 
             drawBoundaries(g, boundaries, grid, scale, x, y)
+            interact?.overlay?.(g, viewport())
 
             // aktuelle (gleitende) Position von Reksio
             const robot = live?.robot && (glidePose(glide.current, performance.now()) ?? live.robot)
@@ -145,7 +191,7 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
                 g.fill()
             }
         })
-    }, [bitmaps, boundaries, colors, data.dock, grid, live])
+    }, [bitmaps, boundaries, colors, data.dock, grid, live, interact, viewport])
 
     // Zoom/Einpassen/Gesten rufen immer die aktuelle Zeichenfunktion, hängen aber nicht von ihr ab:
     // sonst würde jede neue Live-Position die Ansicht neu einpassen
@@ -227,6 +273,8 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
         if (!el || controls !== 'full') return
         const pointers = new Map<number, { x: number; y: number }>()
         let pinch: number | null = null
+        let grabbed: number | null = null // Zeiger, der gerade etwas zieht
+        let down: { id: number; x: number; y: number; moved: boolean } | null = null
         const local = (e: { clientX: number; clientY: number }) => {
             const r = el.getBoundingClientRect()
             return { x: e.clientX - r.left, y: e.clientY - r.top }
@@ -240,13 +288,21 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
         const onDown = (e: PointerEvent) => {
             if (onCtl(e)) return
             el.setPointerCapture(e.pointerId)
-            pointers.set(e.pointerId, local(e))
+            const p = local(e)
+            pointers.set(e.pointerId, p)
+            down = pointers.size === 1 ? { id: e.pointerId, ...p, moved: false } : null
+            if (pointers.size === 1 && interactRef.current?.grab?.(p.x, p.y, viewport())) grabbed = e.pointerId
         }
         const onMove = (e: PointerEvent) => {
             const prev = pointers.get(e.pointerId)
             if (!prev) return
             const cur = local(e)
             pointers.set(e.pointerId, cur)
+            if (down?.id === e.pointerId && Math.hypot(cur.x - down.x, cur.y - down.y) > TAP_PX) down.moved = true
+            if (grabbed === e.pointerId) {
+                interactRef.current?.drag?.(cur.x, cur.y, viewport())
+                return
+            }
             if (pointers.size === 1) {
                 const v = view.current
                 view.current = { ...v, x: v.x + cur.x - prev.x, y: v.y + cur.y - prev.y }
@@ -260,8 +316,16 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             }
         }
         const onUp = (e: PointerEvent) => {
+            const p = pointers.get(e.pointerId)
             pointers.delete(e.pointerId)
             if (pointers.size < 2) pinch = null
+            if (grabbed === e.pointerId) {
+                grabbed = null
+                interactRef.current?.release?.()
+            } else if (e.type === 'pointerup' && p && down?.id === e.pointerId && !down.moved) {
+                interactRef.current?.tap?.(p.x, p.y, viewport())
+            }
+            if (down?.id === e.pointerId) down = null
         }
         const onDbl = (e: MouseEvent) => {
             if (onCtl(e)) return
@@ -282,7 +346,7 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             el.removeEventListener('pointercancel', onUp)
             el.removeEventListener('dblclick', onDbl)
         }
-    }, [controls, redraw, zoomAt])
+    }, [controls, redraw, zoomAt, viewport])
 
     const center = () => {
         const el = wrap.current!

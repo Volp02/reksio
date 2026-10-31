@@ -1,4 +1,4 @@
-import type { Boundary, GeneralInfo, MapData, Pose, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry } from './types'
+import type { Boundary, GeneralInfo, MapData, Pose, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry, ZoneQueue } from './types'
 import { CleaningCategory, type CleaningMode, type NavigationMode } from './types'
 
 // Relativ, damit die App auch hinter einem Präfix (HA-Ingress) läuft
@@ -33,6 +33,11 @@ export const api = {
     poses: (serial: string, since: number) =>
         request<[number, number, number, number][]>('GET', `/robot/${serial}/poses?since=${since}`)
             .then((rows) => rows.map(([ts, x, y, theta]): Pose => ({ ts, x, y, theta }))),
+    zones: (serial: string) => request<ZoneQueue | null>('GET', `/robot/${serial}/zones`),
+    /** Zonen in dieser Reihenfolge nacheinander reinigen; die erste startet sofort */
+    cleanZones: (serial: string, mapId: string, zones: { id: string; name: string }[], mode: CleaningMode, navigationMode: NavigationMode) =>
+        request<ZoneQueue>('POST', `/robot/${serial}/zones`, { mapId, zones, mode, navigationMode }),
+    cancelZones: (serial: string) => request<void>('DELETE', `/robot/${serial}/zones`),
     command: <T = unknown>(serial: string, cmd: string, params?: object) =>
         request<T>('POST', `/robot/${serial}/command`, params ? { cmd, params } : { cmd }),
 }
@@ -60,5 +65,8 @@ export const gen3 = {
     dismissAlert: (s: string) => api.command(s, 'dismissCurrentAlert'),
     getMapBoundaries: (s: string, mapId: string) =>
         api.command<{ data: { boundaries?: Boundary[] } }>(s, 'getMapBoundaries', { mapId }),
+    /** ersetzt alle Zonen und No-Go-Linien der Karte; Zonen brauchen `relevancy` (Punkt innerhalb) */
+    setMapBoundaries: (s: string, mapId: string, boundaries: Boundary[]) =>
+        api.command(s, 'setMapBoundaries', { mapId, boundaries }),
     getSchedule: (s: string) => api.command<{ data: { enabled: boolean; events: ScheduleEvent[] } }>(s, 'getSchedule'),
 }

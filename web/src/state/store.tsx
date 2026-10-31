@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { API, api, gen3 } from '../api/client'
-import type { Pose, Robots, RobotStateData, ServerInfo, Telemetry } from '../api/types'
+import type { Pose, Robots, RobotStateData, ServerInfo, Telemetry, ZoneQueue } from '../api/types'
 
 const HISTORY_S = 3 * 3600
 
@@ -19,12 +19,17 @@ export interface Store {
     /** Posen der letzten Stunden (für die Spur der laufenden Fahrt) */
     poses: Pose[]
     /** letzte Server-Meldung (z. B. Staubbehälter geleert und quittiert) */
-    notice?: { type: string; ts: number }
+    notice?: Notice
+    /** Zonen, die der Server nacheinander reinigen lässt */
+    zoneQueue?: ZoneQueue | null
     /** Sekundentakt für Frische-Anzeigen */
     now: number
     refresh: () => void
     refreshRobot: () => Promise<void>
+    setZoneQueue: (q: ZoneQueue | null) => void
 }
+
+export interface Notice { type: string; ts: number; reason?: string | null }
 
 const Ctx = createContext<Store | null>(null)
 
@@ -41,7 +46,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const [history, setHistory] = useState<Telemetry[]>([])
     const [pose, setPose] = useState<Pose>()
     const [poses, setPoses] = useState<Pose[]>([])
-    const [notice, setNotice] = useState<{ type: string; ts: number }>()
+    const [notice, setNotice] = useState<Notice>()
+    const [zoneQueue, setZoneQueue] = useState<ZoneQueue | null>()
     const [now, setNow] = useState(() => Date.now() / 1000)
     const [reload, setReload] = useState(0)
 
@@ -88,8 +94,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setPoses((ps) => [...ps.filter((x) => x.ts > p.ts - HISTORY_S), p])
         })
         es.addEventListener('notice', (e) => {
-            const n = JSON.parse((e as MessageEvent).data) as { serial: string; type: string; ts: number }
-            if (n.serial === serialRef.current) setNotice({ type: n.type, ts: n.ts })
+            const n = JSON.parse((e as MessageEvent).data) as Notice & { serial: string }
+            if (n.serial === serialRef.current) setNotice({ type: n.type, ts: n.ts, reason: n.reason })
+        })
+        es.addEventListener('zones', (e) => {
+            const z = JSON.parse((e as MessageEvent).data) as { serial: string; queue: ZoneQueue | null }
+            if (z.serial === serialRef.current) setZoneQueue(z.queue)
         })
         es.onopen = () => setServerError(false)
         return () => es.close()
@@ -128,6 +138,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (!serial) return
         api.telemetryLatest(serial).then(setTelemetry).catch(() => undefined)
+        api.zones(serial).then(setZoneQueue).catch(() => undefined)
         api.telemetry(serial, Date.now() / 1000 - HISTORY_S).then(setHistory).catch(() => undefined)
         api.poses(serial, Date.now() / 1000 - HISTORY_S).then((ps) => {
             setPoses(ps)
@@ -138,8 +149,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const value: Store = {
         server, serverError, robots, serial,
         name: (serial && robots?.[serial]?.name) || 'Reksio',
-        connected, robot, robotAt, telemetry, history, pose, poses, notice, now,
+        connected, robot, robotAt, telemetry, history, pose, poses, notice, zoneQueue, now,
         refresh: () => setReload((n) => n + 1),
+        setZoneQueue,
         refreshRobot,
     }
     return <Ctx.Provider value={value}>{children}</Ctx.Provider>

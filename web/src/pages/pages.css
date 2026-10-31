@@ -7,9 +7,46 @@
 .mappage { display: flex; flex-direction: column; gap: var(--s-4); flex: 1; }
 .mappage-view { position: relative; height: calc(100dvh - 160px); min-height: 320px; border-radius: var(--r-l); overflow: hidden; border: 1px solid var(--border); background: var(--map-bg); }
 .mappage-view .mapview { border-radius: 0; }
-@container app (max-width: 640px) {
-    .mappage-view { height: calc(100dvh - 210px); }
+.mappage-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 22rem); gap: var(--s-5); align-items: start; }
+.zpanel { display: flex; flex-direction: column; gap: var(--s-4); max-height: calc(100dvh - 160px); overflow-y: auto; }
+.zpanel .seg { align-self: stretch; }
+.zpanel .ov-modes { flex-direction: column; }
+.zpanel-foot { position: sticky; bottom: calc(-1 * var(--s-5)); margin-bottom: calc(-1 * var(--s-5)); padding-block: var(--s-3) var(--s-5); background: var(--surface); border-top: 1px solid var(--border); }
+@container app (max-width: 900px) {
+    .mappage-body { grid-template-columns: minmax(0, 1fr); }
+    .mappage-view { height: max(60dvh, 320px); }
+    .zpanel { max-height: none; overflow: visible; }
+    .zpanel-foot { position: static; margin-bottom: 0; padding: 0; border-top: 0; }
 }
+
+/* Zonen: Auswahl, Reihenfolge, Bearbeiten */
+.zrow { width: 100%; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; padding-left: 0; padding-right: 0; }
+div.zrow { cursor: default; }
+.zrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-s); }
+.zrow-c {
+    flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    font-size: var(--fs-small); font-weight: 600; font-variant-numeric: tabular-nums;
+    background: color-mix(in oklab, var(--c) 22%, transparent); border: 2px solid var(--c); color: var(--text);
+}
+.zrow[aria-pressed="true"] .zrow-c { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.zrow-c--polygon { border-radius: 6px; }
+.zrow-c--polyline { height: 0; border-width: 0; border-top: 3px dashed var(--c); border-radius: 0; background: none; }
+.zrow-c--n { background: var(--surface-3); border-color: var(--surface-3); color: var(--text-2); }
+.zrow-c--n .lucide { width: 14px; height: 14px; }
+.zrow.is-cur .zrow-c--n { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.zrow.is-cur .row-s { color: var(--accent-text); }
+.zrow-ok { color: var(--accent-text); }
+.zedit { display: flex; flex-direction: column; gap: var(--s-4); }
+.zedit-h { display: flex; align-items: center; gap: var(--s-2); }
+.zedit-t { flex: 1; font-weight: 600; }
+.zedit-err { color: var(--danger-text); font-size: var(--fs-small); overflow-wrap: anywhere; }
+.swatches { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.swatch {
+    width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--surface); background: var(--c); cursor: pointer;
+    box-shadow: 0 0 0 1px var(--border);
+}
+.swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--text); }
+.swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Reinigungen: Liste + Detail, am Handy Detail als eigene Seite */
 .runs { display: grid; grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); gap: var(--s-5); align-items: start; }

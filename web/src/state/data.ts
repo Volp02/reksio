@@ -48,9 +48,9 @@ export function useRunData(serial: string | undefined, id: string | undefined) {
 }
 
 /** Zonen und No-Go-Linien einer Karte; kommen vom Roboter, daher nur wenn er verbunden ist */
-export function useBoundaries(serial: string | undefined, mapId: string | undefined, connected: boolean) {
+export function useBoundaries(serial: string | undefined, mapId: string | undefined, connected: boolean, version = 0) {
     return useLoad<Boundary[]>(serial && mapId && connected ? `bounds:${serial}:${mapId}` : undefined,
-        () => gen3.getMapBoundaries(serial!, mapId!).then((r) => r.data.boundaries ?? []))
+        () => gen3.getMapBoundaries(serial!, mapId!).then((r) => r.data.boundaries ?? []), version)
 }
 
 /** Karte, auf der Reksio fährt: die aktivierte, sonst die neueste */
