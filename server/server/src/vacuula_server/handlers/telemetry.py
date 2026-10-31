@@ -40,19 +40,26 @@ def get_telemetry(req: RouterHandler, serial: str) -> None:
     req.send_ok([{"ts": ts, **data} for ts, data in rows])
 
 
+SLOW_KEYS = ("maintenance", "robotWifi", "warranty")
+
+
 def get_telemetry_latest(req: RouterHandler, serial: str) -> None:
-    """GET /robot/<serial>/telemetry/latest - newest ESP sample"""
+    """GET /robot/<serial>/telemetry/latest - newest ESP sample; seltene Felder aus den letzten Proben ergänzt"""
     with get_session() as session:
-        row = session.execute(
+        rows = session.execute(
             select(Telemetry.ts, Telemetry.data)
             .where(Telemetry.robot == serial)
             .order_by(Telemetry.ts.desc())
-            .limit(1)
-        ).first()
-    if row is None:
+            .limit(60)  # 10 s Takt -> 10 min, länger als der 5-min-Takt der seltenen Felder
+        ).all()
+    if not rows:
         req.send_not_found("No telemetry")
         return
-    req.send_ok({"ts": row.ts, **row.data})
+    latest = {"ts": rows[0].ts, **rows[0].data}
+    for key in SLOW_KEYS:
+        if latest.get(key) is None:
+            latest[key] = next((r.data[key] for r in rows if r.data.get(key) is not None), None)
+    req.send_ok(latest)
 
 
 def get_poses(req: RouterHandler, serial: str) -> None:
