@@ -78,7 +78,9 @@ ESP_HOST: str | None = _get_str_env("ESP_HOST", None)
 ESP_ROBOT: str | None = _get_str_env("ESP_ROBOT", None)  # serial; default: the only Gen3 robot
 ESP_POLL_S: int = _get_int_env("ESP_POLL_S", 10)
 ESP_POSE_POLL_S: int = _get_int_env("ESP_POSE_POLL_S", 2)
+# telemetry in full detail for this many days, then thinned to one sample per TELEMETRY_THIN_S; poses are kept forever
 TELEMETRY_RETENTION_DAYS: int = _get_int_env("TELEMETRY_RETENTION_DAYS", 30)
+TELEMETRY_THIN_S: int = _get_int_env("TELEMETRY_THIN_S", 60)
 
 # HA Ingress stuff
 # By config.yaml default for this value will be true, but others not running via HA App it never even has to pass this check

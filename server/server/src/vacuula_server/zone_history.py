@@ -1,8 +1,8 @@
 """Wann wurde welche Zone zuletzt gereinigt (Gen3)?
 
 Aus den Posen des ESP (siehe docs/step0-koordinaten.md): Posen in Kartenpixel umrechnen und pro Fahrt zählen, wie lange
-Reksio in jeder Zone war. Ab MIN_S Sekunden gilt die Zone in dieser Fahrt als gereinigt. Posen werden nach
-TELEMETRY_RETENTION_DAYS gelöscht; der letzte Zeitpunkt pro Zone bleibt deshalb zusätzlich in app_setting.
+Reksio in jeder Zone war. Ab MIN_S Sekunden gilt die Zone in dieser Fahrt als gereinigt. Der letzte Zeitpunkt pro
+Zone liegt zusätzlich in app_setting (Posen wurden früher nach 30 Tagen gelöscht).
 """
 from __future__ import annotations
 

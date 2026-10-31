@@ -1,7 +1,9 @@
 """Read-only poller for the ESP32 bridge (OpenNeato) on a Gen3 robot's debug port.
 
 Every ESP_POLL_S: state, error, charger, analog (+ motors while cleaning) -> `telemetry`.
-Every ESP_POSE_POLL_S while cleaning: `GetRobotPos Smooth` -> `pose`.
+Every ESP_POSE_POLL_S while cleaning: `GetRobotPos Smooth` -> `pose` (kept forever).
+Telemetry older than TELEMETRY_RETENTION_DAYS is thinned to one sample per TELEMETRY_THIN_S, never deleted.
+Every HISTORY_IMPORT_S when idle: missing poses of finished runs from the ESP's own history (history_import).
 Both are broadcast on /api/events. Only cached read endpoints and GetRobotPos are used,
 no command that changes what the robot does.
 """
@@ -15,12 +17,14 @@ import time
 import urllib.parse
 import urllib.request
 
-from sqlalchemy import delete, select
+from sqlalchemy import Integer, delete, func, select
 
 from vacuula_server.db import db_commit2, get_session
-from vacuula_server.env import ESP_POLL_S, ESP_POSE_POLL_S, ESP_ROBOT, TELEMETRY_RETENTION_DAYS
+from vacuula_server.env import ESP_POLL_S, ESP_POSE_POLL_S, ESP_ROBOT, TELEMETRY_RETENTION_DAYS, TELEMETRY_THIN_S
+from vacuula_server.esp import history_import
 from vacuula_server.esp.config import get_esp_host
 from vacuula_server.handlers.events import broadcast
+from vacuula_server.models.app_setting import AppSetting
 from vacuula_server.models.robot import Robot
 from vacuula_server.models.telemetry import Pose, Telemetry
 
@@ -28,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT_S = 5
 CLEANUP_INTERVAL_S = 3600
+THINNED_KEY = "telemetry_thinned_until"
+HISTORY_IMPORT_S = 600
 SLOW_POLL_S = 300  # Wartungszähler, Roboter-WLAN, Lebensdauer: ändern sich selten
 POSE_RE = re.compile(r"X=([-\d.]+), Y=([-\d.]+), Theta=([-\d.]+)")
 CODE_RE = re.compile(r"\((UI_(?:ALERT|ERROR)_[A-Z0-9_]+)\)")
@@ -116,6 +122,7 @@ class EspPoller:
         self.next_telemetry = 0.0
         self.next_cleanup = 0.0
         self.next_slow = 0.0
+        self.next_history = time.time() + 60
         self.last_bin_in: bool | None = None
         self.last_bin_clear = 0.0
 
@@ -220,11 +227,25 @@ class EspPoller:
         broadcast("pose", {"serial": self.serial, "ts": now, "x": x, "y": y, "theta": theta})
 
     def cleanup(self, now: float) -> None:
+        """Telemetrie älter als TELEMETRY_RETENTION_DAYS ausdünnen: pro Roboter und TELEMETRY_THIN_S nur die erste
+        Messung behalten. Nur der Bereich seit dem letzten Lauf (THINNED_KEY), damit es nicht jedes Mal alles liest."""
         cutoff = now - TELEMETRY_RETENTION_DAYS * 86400
         with get_session() as session:
-            session.execute(delete(Telemetry).where(Telemetry.ts < cutoff))
-            session.execute(delete(Pose).where(Pose.ts < cutoff))
+            row = session.get(AppSetting, THINNED_KEY)
+            since = float(row.value) if row else 0.0
+            if cutoff <= since:
+                return
+            bucket = func.cast(Telemetry.ts / TELEMETRY_THIN_S, Integer)
+            window = (Telemetry.ts >= since - TELEMETRY_THIN_S, Telemetry.ts < cutoff)
+            keep = select(func.min(Telemetry.id)).where(*window).group_by(Telemetry.robot, bucket)
+            result = session.execute(delete(Telemetry).where(*window, Telemetry.id.not_in(keep)))
+            if row:
+                row.value = str(cutoff)
+            else:
+                session.add(AppSetting(key=THINNED_KEY, value=str(cutoff)))
             session.commit()
+        if result.rowcount:
+            logger.info("telemetry thinned: %d samples before %s removed", result.rowcount, time.strftime("%Y-%m-%d %H:%M", time.localtime(cutoff)))
 
     def tick(self) -> None:
         if self.serial is None:
@@ -240,6 +261,12 @@ class EspPoller:
             self.state = self._get("/api/state") or self.state
         if self.online and is_cleaning(self.state):
             self.poll_pose(now)
+        if self.online and not is_cleaning(self.state) and now >= self.next_history:
+            self.next_history = now + HISTORY_IMPORT_S
+            try:
+                history_import.run(self.base, self.serial)
+            except Exception as e:
+                logger.info("ESP history import failed: %s", e)
         if now >= self.next_cleanup:
             self.next_cleanup = now + CLEANUP_INTERVAL_S
             self.cleanup(now)
