@@ -246,9 +246,13 @@ export function MapPage() {
         setDraft({ ...draft, b: { ...draft.b, vertices: vs } })
     }
 
-    const save = async (list: Boundary[]) => {
+    /** Änderung auf die aktuelle Liste vom Roboter anwenden: eine veraltete oder leere Ansicht überschreibt nie andere Zonen */
+    const save = async (change: (list: Boundary[]) => Boundary[]) => {
         setBusy('save')
         try {
+            const fresh = (await gen3.getMapBoundaries(s.serial!, current!)).data?.boundaries
+            if (!Array.isArray(fresh)) throw new Error('boundaries not loaded')
+            const list = change(fresh)
             const res = await gen3.setMapBoundaries(s.serial!, current!, list.map((b) => b.type === 'polygon'
                 ? { ...b, relevancy: interiorPoint(b.vertices) }
                 : { id: b.id, type: b.type, name: b.name, color: b.color, enabled: b.enabled ?? true, vertices: b.vertices }))
@@ -275,15 +279,15 @@ export function MapPage() {
         if (shapeError) return setError(t.zones[shapeError])
         if (b.type === 'polygon' && !b.name.trim()) return setError(t.zones.nameMissing)
         setError(undefined)
-        const next = draft.isNew ? [...all, b] : all.map((x) => (x.id === b.id ? b : x))
-        save(next.map((x) => ({ ...x, name: x.name.trim() })))
+        const nb = { ...b, name: b.name.trim() }
+        save((list) => (draft.isNew || !list.some((x) => x.id === nb.id) ? [...list, nb] : list.map((x) => (x.id === nb.id ? nb : x))))
     }
 
     const remove = () => {
         if (!draft) return
         setConfirmDelete(false)
         if (draft.isNew) return setDraft(undefined)
-        save(all.filter((x) => x.id !== draft.b.id))
+        save((list) => list.filter((x) => x.id !== draft.b.id))
     }
 
     const cleanSelected = async () => {
