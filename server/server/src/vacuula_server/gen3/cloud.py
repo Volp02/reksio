@@ -17,7 +17,7 @@ def cloud_command(serial: str | None, cmd: dict, timeout: float = 10) -> dict | 
     if not conn or not isinstance(conn.conn, Gen2Gen3Conn):
         return None
     req_id, msg = build_command(serial, cmd)
-    slot = PendingRequest()
+    slot = PendingRequest(serial, cmd.get("cmd"))
     pending_requests[str(req_id)] = slot
     try:
         send_chunk(conn.conn.wfile, msg)

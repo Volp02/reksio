@@ -15,12 +15,15 @@ client_connections = []
 
 
 class PendingRequest:
-    __slots__ = ("event", "content", "status")
+    __slots__ = ("event", "content", "status", "serial", "cmd")
 
-    def __init__(self):
+    def __init__(self, serial: str | None = None, cmd: str | None = None):
         self.event = threading.Event()
         self.content = None
         self.status = None
+        # Gen3: für Antworten ohne reqId (siehe event_handler, leeres Chunk)
+        self.serial = serial
+        self.cmd = cmd
 
     def fulfill(self, content, status):
         self.content = content

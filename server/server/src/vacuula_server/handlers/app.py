@@ -129,6 +129,20 @@ def post_map(req: RouterHandler, serial: str, map_id: str) -> None:
     
     req.send_ok()
 
+def delete_map(req: RouterHandler, serial: str, map_id: str) -> None:
+    """DELETE /robot/<serial>/maps/<map_id> - remove a persistent map from the list (Gen3).
+
+    The files stay on disk; the robot no longer gets the map from /persistent_maps."""
+    with get_session() as session:
+        pmap = session.get(PersistentMap, map_id)
+        if pmap is None or pmap.robot != serial:
+            return req.send_not_found("Map not found")
+        pmap.in_maps_list = False
+        pmap.enabled = False
+        session.commit()
+
+    req.send_ok()
+
 def post_robot(req: RouterHandler, serial: str) -> None:
     """POST /robot/<serial> - update robot"""
     if not (data := req.read_json()): return
@@ -253,7 +267,7 @@ def post_robot_command(req: RouterHandler, serial: str) -> None:
         zone_queue.cancel(serial, data["cmd"])
 
     conn = robot_connections[serial]
-    slot = PendingRequest()
+    slot = PendingRequest(serial, data.get("cmd"))
     if (conn.gen == Generation.GEN4):
         # gen4
         req_id, err = robot_send_request(conn, data, slot)

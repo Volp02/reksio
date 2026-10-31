@@ -6,7 +6,7 @@ import re
 from typing import Callable, Optional, Tuple, List
 
 # general
-from .app import get_robots, get_maps, get_map, get_run, post_map, post_robot, get_runs, connect_robot, post_robot_command, get_server_info
+from .app import get_robots, get_maps, get_map, get_run, post_map, delete_map, post_robot, get_runs, connect_robot, post_robot_command, get_server_info
 from .events import get_events
 from .telemetry import get_telemetry, get_telemetry_latest, get_poses
 from .esp import get_esp, put_esp, proxy_esp
@@ -65,6 +65,7 @@ APP_ROUTES: List[Tuple[str, str, Handler]] = [
     ("POST", r"/api/robot/(.+)/maps/(.+)/use", gen4.post_update_floorplan_in_use),
     ("POST", r"/api/robot/(.+)/maps/(.+)/unuse", gen4.post_update_floorplan_in_unuse),
     ("POST", r"/api/robot/(.+)/maps/(.+)", post_map),
+    ("DELETE", r"/api/robot/(.+)/maps/(.+)", delete_map),
     ("GET", r"/api/robot/(.+)/zones", get_zones),
     ("POST", r"/api/robot/(.+)/zones", post_zones),
     ("DELETE", r"/api/robot/(.+)/zones", delete_zones),
