@@ -247,22 +247,8 @@ class EspPoller:
 
 def dismiss_cloud_alert(serial: str | None) -> None:
     """dismissCurrentAlert über das Cloud-Protokoll (Gen3), Antwort höchstens 10 s abwarten"""
-    from vacuula_server.conn import Gen2Gen3Conn
-    from vacuula_server.gen3.commands import build_command, send_chunk
-    from vacuula_server.state import PendingRequest, pending_requests, robot_connections
-    conn = robot_connections.get(serial or "")
-    if not conn or not isinstance(conn.conn, Gen2Gen3Conn):
-        return
-    req_id, msg = build_command(serial, {"cmd": "dismissCurrentAlert"})
-    slot = PendingRequest()
-    pending_requests[str(req_id)] = slot
-    try:
-        send_chunk(conn.conn.wfile, msg)
-        slot.event.wait(10)
-    except Exception as e:
-        logger.warning("dismissCurrentAlert failed: %s", e)
-    finally:
-        pending_requests.pop(str(req_id), None)
+    from vacuula_server.gen3.cloud import cloud_command
+    cloud_command(serial, {"cmd": "dismissCurrentAlert"})
 
 
 # aktueller Poller, für den Verbindungsstatus in GET /api/esp

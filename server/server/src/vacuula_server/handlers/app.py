@@ -16,6 +16,7 @@ import json
 import queue
 import os
 from vacuula_server.gen4.handlers import robot_send_request
+from vacuula_server import zone_queue
 from vacuula_server.server_tz import server_timezone, utc_offset_minutes
 
 from typing import TYPE_CHECKING, Sequence
@@ -246,6 +247,10 @@ def post_robot_command(req: RouterHandler, serial: str) -> None:
     if serial not in robot_connections:
         req.send_bad_request("Robot not connected")
         return
+
+    # eigener Stopp/Start aus der App: restliche Zonen nicht mehr starten
+    if data.get("cmd") in ("stopCleaning", "sendToBase", "startCleaning"):
+        zone_queue.cancel(serial, data["cmd"])
 
     conn = robot_connections[serial]
     slot = PendingRequest()
