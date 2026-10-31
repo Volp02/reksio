@@ -477,6 +477,12 @@ const en: Shape<Dict> = {
         restoreConfirm: 'Restore the state from {when}?',
         restored: 'Restored',
     },
+    app: {
+        title: 'Android app',
+        download: 'Download',
+        hint: 'Reksio as an Android app',
+        close: 'Close',
+    },
     maint: {
         title: 'Maintenance',
         bin: 'Dust bin',

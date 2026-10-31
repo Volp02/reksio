@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { BatteryMedium, Bot, ChevronRight, Cpu, LayoutDashboard, Palette, Server, SlidersHorizontal, Smartphone } from 'lucide-react'
-import { gen3 } from '../api/client'
+import { BatteryMedium, Bot, ChevronRight, Cpu, Download, LayoutDashboard, Palette, Server, SlidersHorizontal, Smartphone } from 'lucide-react'
+import { APK_URL, gen3 } from '../api/client'
 import type { GeneralInfo } from '../api/types'
 import { useI18n, type Lang } from '../i18n'
 import { useStore } from '../state/store'
@@ -9,13 +9,14 @@ import { useTheme, type Density, type ThemePref } from '../ui/theme'
 import { Card, KV, Label, Segmented, Switch } from '../ui/ui'
 import { DiagnosticsCard } from './Diagnostics'
 import { AccessCard } from './AccessCard'
+import { fmtNumber } from '../format'
 import './pages.css'
 
 /** läuft in der Android-App (WebView mit eigener Kennung): dort lässt sich die Serveradresse ändern */
-const IN_APP = /ReksioApp\//.test(navigator.userAgent)
+export const IN_APP = /ReksioApp\//.test(navigator.userAgent)
 
 export function Settings() {
-    const { t, lang, setLang } = useI18n()
+    const { t, lang, setLang, locale } = useI18n()
     const theme = useTheme()
     const prefs = usePrefs()
     const s = useStore()
@@ -58,6 +59,20 @@ export function Settings() {
                     <li><a className="row" href="#/settings/battery"><BatteryMedium className="row-i" /><span className="row-main"><Label className="row-t">{t.bat.title}</Label></span><ChevronRight className="row-i" /></a></li>
                 </ul>
             </Card>
+
+            {!IN_APP && s.server?.android_app && (
+                <Card icon={<Smartphone />} title={t.app.title}>
+                    <ul className="rows">
+                        <li><a className="row" href={APK_URL} download>
+                            <Download className="row-i" />
+                            <span className="row-main">
+                                <Label className="row-t">{t.app.download}</Label>
+                                <Label className="row-s">{[s.server.android_app.version, `${fmtNumber(locale, s.server.android_app.size / 1e6, 1)} MB`].filter(Boolean).join(' · ')}</Label>
+                            </span>
+                        </a></li>
+                    </ul>
+                </Card>
+            )}
 
             <Card icon={<Bot />} title={t.settings.robot}>
                 <KV rows={[

@@ -99,3 +99,13 @@
 .login-t { margin: 0; font-size: var(--fs-h2); font-weight: 600; }
 .login-e { margin: var(--s-2) 0 0; color: var(--danger-text); font-size: var(--fs-small); }
 .login .actions { margin-top: var(--s-4); }
+
+/* Hinweis auf die Android-App (einmalig, schließbar) */
+.apphint {
+    display: flex; align-items: center; gap: var(--s-2); min-width: 0; margin-bottom: var(--s-4);
+    padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+    background: var(--accent-soft); border: 1px solid var(--border); border-radius: var(--r-l);
+}
+.apphint-i { width: 20px; height: 20px; flex: none; color: var(--accent-text); }
+.apphint-t { flex: 1; font-weight: 500; color: var(--accent-text); }
+.apphint .btn { flex: none; max-width: var(--w-ctl-max); }

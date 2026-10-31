@@ -9,6 +9,9 @@ export const UNAUTHORIZED = 'reksio:unauthorized'
 
 export interface AuthState { enabled: boolean; authed: boolean }
 
+/** Download der Android-App (GET /api/app/reksio.apk) */
+export const APK_URL = `${API}/app/reksio.apk`
+
 export class HttpError extends Error {
     constructor(public status: number, message: string) { super(message) }
 }

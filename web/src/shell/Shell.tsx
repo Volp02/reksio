@@ -1,17 +1,40 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Bot, CalendarClock, ChevronLeft, Cpu, WifiOff, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Sun } from 'lucide-react'
+import { Bot, CalendarClock, ChevronLeft, Cpu, WifiOff, Download, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Smartphone, Sun, X } from 'lucide-react'
 import { useI18n, fill } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
 import { espProblem, robotStatus } from '../status'
 import { fmtTime } from '../format'
 import { useTheme } from '../ui/theme'
 import { IconButton, Label, Pill, Toast } from '../ui/ui'
+import { APK_URL } from '../api/client'
+import { IN_APP } from '../pages/Settings'
 import './shell.css'
 
 export type Route = 'overview' | 'map' | 'runs' | 'schedule' | 'settings'
 export const NAV: Route[] = ['overview', 'map', 'runs', 'schedule']
 const ICONS: Record<Route, ReactNode> = {
     overview: <LayoutDashboard />, map: <MapIcon />, runs: <History />, schedule: <CalendarClock />, settings: <Settings />,
+}
+
+const APP_HINT_KEY = 'reksio.appHint'
+// Hinweis auf die App: nur Android-Browser (nicht in der App selbst), einmal pro Browser
+const ANDROID_BROWSER = /Android/i.test(navigator.userAgent) && !IN_APP
+
+/** einmaliger Hinweis am Android-Handy: App herunterladen */
+function AppHint() {
+    const { t } = useI18n()
+    const store = useStore()
+    const [hidden, setHidden] = useState(() => localStorage.getItem(APP_HINT_KEY) === '1')
+    if (hidden || !ANDROID_BROWSER || !store.server?.android_app) return null
+    const close = () => { localStorage.setItem(APP_HINT_KEY, '1'); setHidden(true) }
+    return (
+        <div className="apphint" role="status">
+            <Smartphone className="apphint-i" />
+            <Label className="apphint-t">{t.app.hint}</Label>
+            <a className="btn btn--primary btn--s" href={APK_URL} download onClick={close}><Download /><Label>{t.app.download}</Label></a>
+            <IconButton size="s" icon={<X />} label={t.app.close} onClick={close} />
+        </div>
+    )
 }
 
 /** `sub`: Unterseite (Titel + Zurück), z. B. Einstellungen → ESP */
@@ -88,6 +111,7 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
                     <span className="ph-actions">{themeBtn}{settingsBtn}</span>
                 </div>
                 {store.serverError && <div className="banner" role="alert">{t.common.serverUnreachable}</div>}
+                <AppHint />
                 {children}
             </main>
 

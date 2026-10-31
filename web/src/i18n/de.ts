@@ -474,6 +474,12 @@ const de = {
         restoreConfirm: 'Stand vom {when} wiederherstellen?',
         restored: 'Wiederhergestellt',
     },
+    app: {
+        title: 'Android-App',
+        download: 'Herunterladen',
+        hint: 'Reksio als Android-App',
+        close: 'Schließen',
+    },
     maint: {
         title: 'Wartung',
         bin: 'Staubbehälter',

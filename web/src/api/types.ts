@@ -4,6 +4,8 @@ export interface ServerInfo {
     version: string
     timezone: string
     utc_offset_minutes: number
+    /** APK in data/app des Servers, sonst null */
+    android_app?: { version: string | null; size: number } | null
 }
 
 export interface RobotSummary {
