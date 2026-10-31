@@ -12,6 +12,7 @@ from .telemetry import get_telemetry, get_telemetry_latest, get_poses
 from .esp import get_esp, put_esp, proxy_esp
 from .zones import get_zones, post_zones, delete_zones, get_boundary_backups, get_zone_history
 from .plans import get_plans, put_plans
+from .history import get_jobs, get_incidents
 from vacuula_server.handlers.setup import get_cert, get_log, get_log_full
 
 #gen4
@@ -19,7 +20,7 @@ import vacuula_server.gen4.app as gen4
 # from gen4.app import delete_demote_floorplan, get_boundaries, get_test, post_boundaries, post_update_floorplan_in_unuse, post_update_floorplan_in_use
 
 # gen3
-from vacuula_server.gen3.handlers.beehive import post_links, persistent_maps, upload_init, upload_finish
+from vacuula_server.gen3.handlers.beehive import post_links, persistent_maps, upload_init, upload_finish, push_notifications, life_stats
 from vacuula_server.gen3.handlers.nucleo import nucleo_init
 from vacuula_server.gen3.handlers.s3_upload import s3_upload
 
@@ -31,10 +32,15 @@ logger = logging.getLogger(__name__)
 # Route definitions: (method, pattern, handler)
 NUCLEO_ROUTES: List[Tuple[str, str, Handler]] = [
     ("POST", "/vendors/neato/login", nucleo_init),
+    # Berichte kommen je nach Firmware mit Beehive- oder Cometa-Accept
+    ("POST", "/push_notifications", push_notifications),
+    ("POST", r"/runs/([^/]+)/life_stats", life_stats),
 ]
 
 BEEHIVE_ROUTES: List[Tuple[str, str, Handler]] = [
     ("POST", "/links", post_links),
+    ("POST", "/push_notifications", push_notifications),
+    ("POST", r"/runs/([^/]+)/life_stats", life_stats),
     ("POST", r"/(.+)/upload_jobs", upload_init),
     ("GET", "/persistent_maps", persistent_maps),
     ("PUT", r"/(.+)/upload_jobs/(.+)", upload_finish),
@@ -69,6 +75,8 @@ APP_ROUTES: List[Tuple[str, str, Handler]] = [
     ("POST", r"/api/robot/(.+)/maps/(.+)/unuse", gen4.post_update_floorplan_in_unuse),
     ("POST", r"/api/robot/(.+)/maps/(.+)", post_map),
     ("DELETE", r"/api/robot/(.+)/maps/(.+)", delete_map),
+    ("GET", r"/api/robot/([^/]+)/jobs", get_jobs),
+    ("GET", r"/api/robot/([^/]+)/incidents", get_incidents),
     ("GET", r"/api/robot/([^/]+)/plans", get_plans),
     ("PUT", r"/api/robot/([^/]+)/plans", put_plans),
     ("GET", r"/api/robot/(.+)/zones", get_zones),

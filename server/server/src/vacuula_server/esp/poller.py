@@ -19,6 +19,7 @@ import urllib.request
 
 from sqlalchemy import Integer, delete, func, select
 
+from vacuula_server import cleaning_log
 from vacuula_server.db import db_commit2, get_session
 from vacuula_server.env import ESP_POLL_S, ESP_POSE_POLL_S, ESP_ROBOT, TELEMETRY_RETENTION_DAYS, TELEMETRY_THIN_S
 from vacuula_server.esp import history_import
@@ -192,6 +193,10 @@ class EspPoller:
             data["robotWifi"] = parse_robot_wifi(raw_wifi) if raw_wifi else None
             data["warranty"] = self._get("/api/warranty")
         self._auto_clear_bin(data)
+        if data["error"] is not None:
+            err = data["error"]
+            cleaning_log.incidents_seen(self.serial, "esp", {
+                cleaning_log.norm_code(c, "alert"): err.get("displayMessage") for c in error_codes(err)}, now)
         with get_session() as session:
             db_commit2(session, Telemetry(robot=self.serial, ts=now, data=data))
         broadcast("telemetry", {"serial": self.serial, "ts": now, **data})

@@ -9,6 +9,7 @@ import vacuula_server.gen3.init
 import vacuula_server.gen4.init
 import vacuula_server.handlers.init
 import vacuula_server.esp.poller
+import vacuula_server.cleaning_log
 import vacuula_server.zone_queue
 import vacuula_server.plans
 from vacuula_server.handlers.init_ha_ingress import start as start_ha_ingress
@@ -34,6 +35,10 @@ def main():
         threading.Thread(target=vacuula_server.gen4.init.start, daemon=True).start()
 
     threading.Thread(target=vacuula_server.handlers.init.start, daemon=True).start()
+    try:
+        vacuula_server.cleaning_log.backfill_incidents()
+    except Exception:
+        logging.getLogger(__name__).exception("incident backfill failed")
     threading.Thread(target=vacuula_server.esp.poller.start, daemon=True).start()
     if GEN3_ENABLED:
         threading.Thread(target=vacuula_server.zone_queue.run, daemon=True).start()

@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from vacuula_server import zone_queue
+from vacuula_server import cleaning_log, zone_queue
 from vacuula_server.db import get_session
 from vacuula_server.gen3.cloud import cloud_command
 from vacuula_server.handlers.events import broadcast
@@ -165,17 +165,21 @@ def _ready(serial: str) -> str | None:
 def _start(serial: str, plan: dict) -> str | None:
     """Termin starten; Rückgabe Fehlergrund oder None"""
     if plan["zones"]:
-        q, res = zone_queue.start(serial, plan["mapId"], plan["zones"], plan["mode"], plan["navigationMode"])
+        q, res = zone_queue.start(serial, plan["mapId"], plan["zones"], plan["mode"], plan["navigationMode"], "plan", plan["id"])
         return None if q else ((res or {}).get("error") or "notStarted")
     params = {"mode": plan["mode"], "navigationMode": plan["navigationMode"]}
     if plan.get("mapId"):
         # ganze Karte: Kategorie Karte, damit No-Go-Linien gelten
         res = cloud_command(serial, {"cmd": "startCleaning", "params": {**params, "category": CATEGORY_MAP, "mapId": plan["mapId"]}}, timeout=20)
         if res and res.get("result") == "ok":
+            cleaning_log.job_create(serial, "plan", plan["id"], plan["mapId"], [], status="started")
             return None
         logger.warning("plan %s: map cleaning refused (%s), trying house cleaning", plan["id"], (res or {}).get("result"))
     res = cloud_command(serial, {"cmd": "startCleaning", "params": {**params, "category": CATEGORY_HOUSE}}, timeout=20)
-    return None if res and res.get("result") == "ok" else ((res or {}).get("error") or "notStarted")
+    if res and res.get("result") == "ok":
+        cleaning_log.job_create(serial, "plan", plan["id"], plan.get("mapId"), [], status="started")
+        return None
+    return (res or {}).get("error") or "notStarted"
 
 
 def _record(serial: str, plan_id: str, **changes) -> None:

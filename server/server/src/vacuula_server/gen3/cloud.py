@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 
+from vacuula_server import cleaning_log
 from vacuula_server.conn import Gen2Gen3Conn
 from vacuula_server.gen3.commands import build_command, send_chunk
 from vacuula_server.state import PendingRequest, pending_requests, robot_connections
@@ -23,7 +24,10 @@ def cloud_command(serial: str | None, cmd: dict, timeout: float = 10) -> dict | 
         send_chunk(conn.conn.wfile, msg)
         if not slot.event.wait(timeout):
             return None
-        return json.loads(slot.content)
+        res = json.loads(slot.content)
+        if cmd.get("cmd") == "getRobotState":
+            cleaning_log.robot_state_seen(serial, res)
+        return res
     except Exception as e:
         logger.warning("%s failed: %s", cmd.get("cmd"), e)
         return None

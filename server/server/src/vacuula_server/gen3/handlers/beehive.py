@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import logging
+from vacuula_server import cleaning_log
 from vacuula_server.constants import MAPS_DIR
 from vacuula_server.gen3.data import Gen3Data
 from vacuula_server.gen3.utils import get_robot_serial
@@ -200,3 +201,27 @@ def upload_finish(req: RouterHandler, upload_type:Literal["maps", "logs"], job_i
             grun.run = run
 
         session.commit()
+
+
+def _report(req: RouterHandler, kind: str, ref: str | None) -> None:
+    """Bericht des Roboters roh speichern (Format noch unbekannt) und annehmen"""
+    if not (serial := get_robot_serial(req)): return
+    raw = req.read_data()
+    if raw is None: return
+    try:
+        data = json.loads(raw) if raw else None
+    except ValueError:
+        data = raw.decode("utf-8", "replace")[:20000]
+    cleaning_log.report(serial, kind, ref, data)
+    logger.info("robot %s sent %s%s", serial, kind, f" for {ref}" if ref else "")
+    req.send_ok({})
+
+
+def push_notifications(req: RouterHandler) -> None:
+    """POST /push_notifications - Benachrichtigung, die die Neato-App bekommen hätte"""
+    _report(req, "push", None)
+
+
+def life_stats(req: RouterHandler, run_id: str) -> None:
+    """POST /runs/{id}/life_stats - Zähler nach jeder Fahrt, auch nach abgebrochenen ohne Run"""
+    _report(req, "life_stats", run_id)
