@@ -30,8 +30,8 @@ function AppHint() {
     return (
         <div className="apphint" role="status">
             <Smartphone className="apphint-i" />
-            <Label className="apphint-t">{t.app.hint}</Label>
-            <a className="btn btn--primary btn--s" href={APK_URL} download onClick={close}><Download /><Label>{t.app.download}</Label></a>
+            <Label className="apphint-t">{t.app.title}</Label>
+            <a className="btn btn--primary btn--s" href={APK_URL} download onClick={close} aria-label={t.app.download} title={t.app.download}><Download /><Label>{t.app.download}</Label></a>
             <IconButton size="s" icon={<X />} label={t.app.close} onClick={close} />
         </div>
     )

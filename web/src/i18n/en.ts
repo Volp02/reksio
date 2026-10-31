@@ -480,7 +480,6 @@ const en: Shape<Dict> = {
     app: {
         title: 'Android app',
         download: 'Download',
-        hint: 'Reksio as an Android app',
         close: 'Close',
     },
     maint: {

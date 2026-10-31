@@ -477,7 +477,6 @@ const de = {
     app: {
         title: 'Android-App',
         download: 'Herunterladen',
-        hint: 'Reksio als Android-App',
         close: 'Schließen',
     },
     maint: {

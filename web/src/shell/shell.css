@@ -109,3 +109,7 @@
 .apphint-i { width: 20px; height: 20px; flex: none; color: var(--accent-text); }
 .apphint-t { flex: 1; font-weight: 500; color: var(--accent-text); }
 .apphint .btn { flex: none; max-width: var(--w-ctl-max); }
+@container app (max-width: 400px) {
+    .apphint .btn .lbl { display: none; }
+    .apphint .btn { padding-inline: var(--s-2); }
+}
