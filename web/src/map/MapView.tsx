@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Maximize, Minus, Plus } from 'lucide-react'
 import type { Boundary, MapData } from '../api/types'
 import { useI18n } from '../i18n'
@@ -41,13 +41,22 @@ export interface MapViewport {
     center: () => [number, number]
 }
 
+/** gedrückte Zusatztasten beim Zeigerereignis */
+export interface Mods { shift: boolean; alt: boolean }
+
 /** Antippen und Ziehen auf der Karte (Zonen wählen, Eckpunkte verschieben) */
 export interface MapInteraction {
     /** Zeiger gedrückt; true: der folgende Zug gehört dem Aufrufer statt dem Verschieben der Karte */
-    grab?: (x: number, y: number, vp: MapViewport) => boolean
-    drag?: (x: number, y: number, vp: MapViewport) => void
+    grab?: (x: number, y: number, vp: MapViewport, mods: Mods) => boolean
+    drag?: (x: number, y: number, vp: MapViewport, mods: Mods) => void
     release?: () => void
-    tap?: (x: number, y: number, vp: MapViewport) => void
+    tap?: (x: number, y: number, vp: MapViewport, mods: Mods) => void
+    /** Doppelklick; true: nicht zoomen */
+    doubleTap?: (x: number, y: number, vp: MapViewport) => boolean
+    /** Rechtsklick; true: kein Kontextmenü */
+    context?: (x: number, y: number, vp: MapViewport) => boolean
+    /** Maus ohne gedrückte Taste (undefined: Zeiger hat die Karte verlassen); Rückgabe: CSS-Cursor */
+    hover?: (p: { x: number; y: number; vp: MapViewport } | undefined) => string | undefined
     /** zusätzlich zeichnen, über Zonen und unter Reksio */
     overlay?: (g: CanvasRenderingContext2D, vp: MapViewport) => void
 }
@@ -65,11 +74,13 @@ interface Props {
     interact?: MapInteraction
     /** aktuelle Umrechnung für den Aufrufer (z. B. neue Zone in der Bildmitte) */
     viewportRef?: { current?: () => MapViewport }
+    /** Werkzeugleiste oben links in der Karte */
+    tools?: ReactNode
 }
 
 const TAP_PX = 8 // weiter bewegt: Verschieben statt Antippen
 
-export function MapView({ data, run, boundaries, live, label, controls = 'full', fill = false, interact, viewportRef }: Props) {
+export function MapView({ data, run, boundaries, live, label, controls = 'full', fill = false, interact, viewportRef, tools }: Props) {
     const { t } = useI18n()
     const { resolved } = useTheme()
     const wrap = useRef<HTMLDivElement>(null)
@@ -279,28 +290,36 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             const r = el.getBoundingClientRect()
             return { x: e.clientX - r.left, y: e.clientY - r.top }
         }
-        const onCtl = (e: Event) => !!(e.target as HTMLElement).closest('.mapctl')
+        const onCtl = (e: Event) => !!(e.target as HTMLElement).closest('.mapctl, .maptools')
+        const mods = (e: PointerEvent): Mods => ({ shift: e.shiftKey, alt: e.altKey })
+        const setCursor = (c: string | undefined) => { el.style.cursor = c ?? '' }
         const onWheel = (e: WheelEvent) => {
             e.preventDefault()
             const p = local(e)
             zoomAt(Math.exp(-e.deltaY * 0.0015), p.x, p.y)
         }
         const onDown = (e: PointerEvent) => {
-            if (onCtl(e)) return
+            if (onCtl(e) || e.button > 0) return
             el.setPointerCapture(e.pointerId)
             const p = local(e)
             pointers.set(e.pointerId, p)
             down = pointers.size === 1 ? { id: e.pointerId, ...p, moved: false } : null
-            if (pointers.size === 1 && interactRef.current?.grab?.(p.x, p.y, viewport())) grabbed = e.pointerId
+            if (pointers.size === 1 && interactRef.current?.grab?.(p.x, p.y, viewport(), mods(e))) grabbed = e.pointerId
         }
         const onMove = (e: PointerEvent) => {
             const prev = pointers.get(e.pointerId)
-            if (!prev) return
+            if (!prev) {
+                if (e.pointerType === 'mouse' && !onCtl(e)) {
+                    const p = local(e)
+                    setCursor(interactRef.current?.hover?.({ ...p, vp: viewport() }))
+                }
+                return
+            }
             const cur = local(e)
             pointers.set(e.pointerId, cur)
             if (down?.id === e.pointerId && Math.hypot(cur.x - down.x, cur.y - down.y) > TAP_PX) down.moved = true
             if (grabbed === e.pointerId) {
-                interactRef.current?.drag?.(cur.x, cur.y, viewport())
+                interactRef.current?.drag?.(cur.x, cur.y, viewport(), mods(e))
                 return
             }
             if (pointers.size === 1) {
@@ -323,21 +342,30 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
                 grabbed = null
                 interactRef.current?.release?.()
             } else if (e.type === 'pointerup' && p && down?.id === e.pointerId && !down.moved) {
-                interactRef.current?.tap?.(p.x, p.y, viewport())
+                interactRef.current?.tap?.(p.x, p.y, viewport(), mods(e))
             }
             if (down?.id === e.pointerId) down = null
         }
         const onDbl = (e: MouseEvent) => {
             if (onCtl(e)) return
             const p = local(e)
+            if (interactRef.current?.doubleTap?.(p.x, p.y, viewport())) return
             zoomAt(2, p.x, p.y)
         }
+        const onContext = (e: MouseEvent) => {
+            if (onCtl(e)) return
+            const p = local(e)
+            if (interactRef.current?.context?.(p.x, p.y, viewport())) e.preventDefault()
+        }
+        const onLeave = () => { if (!pointers.size) setCursor(interactRef.current?.hover?.(undefined)) }
         el.addEventListener('wheel', onWheel, { passive: false })
         el.addEventListener('pointerdown', onDown)
         el.addEventListener('pointermove', onMove)
         el.addEventListener('pointerup', onUp)
         el.addEventListener('pointercancel', onUp)
         el.addEventListener('dblclick', onDbl)
+        el.addEventListener('contextmenu', onContext)
+        el.addEventListener('pointerleave', onLeave)
         return () => {
             el.removeEventListener('wheel', onWheel)
             el.removeEventListener('pointerdown', onDown)
@@ -345,6 +373,8 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             el.removeEventListener('pointerup', onUp)
             el.removeEventListener('pointercancel', onUp)
             el.removeEventListener('dblclick', onDbl)
+            el.removeEventListener('contextmenu', onContext)
+            el.removeEventListener('pointerleave', onLeave)
         }
     }, [controls, redraw, zoomAt, viewport])
 
@@ -357,6 +387,7 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
         <div className={`mapview${controls === 'full' ? ' mapview--interactive' : ''}${fill ? ' mapview--full' : ''}`} ref={wrap}
             style={{ aspectRatio: `${bounds.w} / ${bounds.h}` }}>
             <canvas ref={canvas} role="img" aria-label={label} />
+            {tools && <div className="maptools">{tools}</div>}
             <div className="mapctl">
                 {controls === 'full' && <>
                     <IconButton size="s" variant="default" icon={<Plus />} label={t.map.zoomIn} onClick={() => zoomAt(1.5, ...center())} />

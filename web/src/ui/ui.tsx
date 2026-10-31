@@ -145,8 +145,8 @@ export function Empty({ icon, label, action }: { icon?: ReactNode; label: string
 }
 
 /** Bestätigung für Befehle mit Folgen (Reinigung beenden, Neustart, …) */
-export function Confirm({ open, title, confirmLabel, cancelLabel, onConfirm, onCancel }:
-    { open: boolean; title: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void; onCancel: () => void }) {
+export function Confirm({ open, title, confirmLabel, cancelLabel, onConfirm, onCancel, tone = 'danger' }:
+    { open: boolean; title: string; confirmLabel: string; cancelLabel: string; onConfirm: () => void; onCancel: () => void; tone?: 'danger' | 'primary' }) {
     const ref = useRef<HTMLDialogElement>(null)
     useEffect(() => {
         const d = ref.current
@@ -160,7 +160,7 @@ export function Confirm({ open, title, confirmLabel, cancelLabel, onConfirm, onC
             <h2 className="dialog-t">{title}</h2>
             <div className="dialog-a">
                 <Button label={cancelLabel} onClick={onCancel} autoFocus />
-                <Button label={confirmLabel} variant="danger" onClick={onConfirm} />
+                <Button label={confirmLabel} variant={tone} onClick={onConfirm} />
             </div>
         </dialog>
     )

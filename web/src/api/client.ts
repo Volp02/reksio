@@ -33,6 +33,10 @@ export const api = {
     poses: (serial: string, since: number) =>
         request<[number, number, number, number][]>('GET', `/robot/${serial}/poses?since=${since}`)
             .then((rows) => rows.map(([ts, x, y, theta]): Pose => ({ ts, x, y, theta }))),
+    /** Gen3: Name und „in Verwendung“ (der Roboter lädt nur aktivierte Karten) */
+    updateMap: (serial: string, id: string, name: string, enabled: boolean) =>
+        request<void>('POST', `/robot/${serial}/maps/${id}`, { name, enabled }),
+    deleteMap: (serial: string, id: string) => request<void>('DELETE', `/robot/${serial}/maps/${id}`),
     zones: (serial: string) => request<ZoneQueue | null>('GET', `/robot/${serial}/zones`),
     /** Zonen in dieser Reihenfolge nacheinander reinigen; die erste startet sofort */
     cleanZones: (serial: string, mapId: string, zones: { id: string; name: string }[], mode: CleaningMode, navigationMode: NavigationMode) =>
@@ -63,6 +67,8 @@ export const gen3 = {
     sendToBase: (s: string) => api.command(s, 'sendToBase'),
     findMe: (s: string) => api.command(s, 'findMe'),
     dismissAlert: (s: string) => api.command(s, 'dismissCurrentAlert'),
+    /** Erkundungsfahrt für eine neue Karte, nur aus der Basis */
+    explore: (s: string) => api.command(s, 'startPersistentMapExploration'),
     getMapBoundaries: (s: string, mapId: string) =>
         api.command<{ data: { boundaries?: Boundary[] } }>(s, 'getMapBoundaries', { mapId }),
     /** ersetzt alle Zonen und No-Go-Linien der Karte; Zonen brauchen `relevancy` (Punkt innerhalb) */
