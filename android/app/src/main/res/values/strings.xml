@@ -4,4 +4,15 @@
     <string name="kanal_dauer">Wächter</string>
     <string name="kanal_info">Ablauf</string>
     <string name="kanal_warnung">Fehler und Störungen</string>
+    <string name="setup_titel">Reksio-Server</string>
+    <string name="setup_adresse">Adresse, z. B. 192.168.1.10:8050</string>
+    <string name="setup_suchen">Im Netz suchen</string>
+    <string name="setup_sucht">Sucht …</string>
+    <string name="setup_verbinden">Verbinden</string>
+    <string name="setup_prueft">Prüft …</string>
+    <string name="setup_gefunden">Gefunden: %1$s</string>
+    <string name="setup_nichts">Kein Server gefunden. Adresse von Hand eingeben.</string>
+    <string name="setup_falsch">Adresse ungültig</string>
+    <string name="setup_offline">Server unter %1$s nicht erreichbar</string>
+    <string name="setup_version">Version %1$s</string>
 </resources>

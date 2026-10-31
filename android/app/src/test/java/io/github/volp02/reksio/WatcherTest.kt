@@ -47,4 +47,30 @@ class WatcherTest {
         texte(dock, s("UIMGR_STATE_IDLE"))
         assertEquals(emptyList<String>(), texte(dock, null, 0) + texte(dock, null, 9999))
     }
+
+    @Test
+    fun ablaufHinweiseSindKeineStoerung() {
+        val w = Watcher()
+        texte(w, s("UIMGR_STATE_HOUSECLEANINGRUNNING"))
+        val zurueck = Status("UIMGR_STATE_HOUSECLEANINGRUNNING", "", hasError = true, errorMessage = "Returning to base",
+            codes = listOf("UI_ALERT_RETURN_TO_BASE"))
+        assertEquals(emptyList<String>(), texte(w, zurueck))
+        val klemmt = zurueck.copy(errorMessage = "Robot is picked up", codes = listOf("UI_ALERT_INVALID", "UI_ERROR_PICKED_UP"))
+        assertEquals(listOf("Hochgehoben oder gekippt"), texte(w, klemmt))
+    }
+
+    @Test
+    fun zonenfolgeOhneStartUndEndeJederZone() {
+        val w = Watcher()
+        w.pruefen(s("UIMGR_STATE_IDLE"), 0, zonen = true)
+        assertEquals(emptyList<String>(), w.pruefen(s("UIMGR_STATE_HOUSECLEANINGRUNNING"), 1, zonen = true).map { it.text })
+        assertEquals(emptyList<String>(), w.pruefen(s("UIMGR_STATE_IDLE"), 2, zonen = true).map { it.text })
+    }
+
+    @Test
+    fun hinweiseDesServers() {
+        assertEquals("Zonen fertig · nicht gereinigt: Flur, Bad", Watcher.hinweis("zones_partial", listOf("Flur", "Bad"))?.text)
+        assertEquals(Level.WARNUNG, Watcher.hinweis("plan_skipped")?.level)
+        assertEquals(null, Watcher.hinweis("telemetry"))
+    }
 }

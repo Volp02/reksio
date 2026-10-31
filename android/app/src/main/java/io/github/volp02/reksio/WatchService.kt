@@ -17,15 +17,24 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Fragt im Hintergrund die gecachten ESP-Endpunkte ab (`/api/state`, `/api/error`,
- * `/api/charger`) und meldet Änderungen als Benachrichtigung. Nur lesend: es geht
- * kein Befehl an den Roboter, und die Endpunkte belasten die serielle Leitung nicht.
+ * Hört im Hintergrund auf den Ereignisstrom des Servers (`/api/events`) und meldet Änderungen als Benachrichtigung:
+ * Zustand und Störungen aus der Telemetrie (ESP), dazu die Hinweise des Servers (Zonen nicht gereinigt, Termin
+ * ausgelassen, …). Nur lesend, es geht kein Befehl an den Roboter.
  */
 class WatchService : Service() {
     private lateinit var thread: HandlerThread
     private lateinit var handler: Handler
     private val watcher = Watcher()
     private var naechsteId = 100
+    @Volatile private var laeuft = false
+    @Volatile private var generation = 0
+    @Volatile private var verbindung: HttpURLConnection? = null
+
+    // Zustand, nur im Handler-Thread
+    private var status: Status? = null
+    private var telemetrieAm = 0L
+    private var serverDa = false
+    private var zonen = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -47,51 +56,106 @@ class WatchService : Service() {
         } else {
             startForeground(ID_DAUER, n)
         }
+        neuVerbinden()
         handler.removeCallbacksAndMessages(null)
-        handler.post(::runde)
+        handler.post(::pruefen)
         return START_STICKY
     }
 
     override fun onDestroy() {
+        laeuft = false
+        verbindung?.disconnect()
         handler.removeCallbacksAndMessages(null)
         thread.quitSafely()
         super.onDestroy()
     }
 
-    private fun runde() {
-        val status = abfragen()
-        val nm = getSystemService(NotificationManager::class.java)
-        for (m in watcher.pruefen(status, System.currentTimeMillis())) melden(nm, m)
-        nm.notify(ID_DAUER, dauerNotification(Watcher.zusammenfassung(status)))
-        handler.postDelayed(::runde, INTERVALL_MS)
+    /** (Neu) mit dem Server verbinden, z. B. nach Adresswechsel */
+    private fun neuVerbinden() {
+        val g = ++generation
+        laeuft = true
+        verbindung?.disconnect()
+        Thread({ lesen(g) }, "reksio-events").also { it.isDaemon = true; it.start() }
     }
 
-    private fun abfragen(): Status? = try {
-        val state = JSONObject(get("/api/state"))
-        val err = runCatching { JSONObject(get("/api/error")) }.getOrNull()
-        val charger = runCatching { JSONObject(get("/api/charger")) }.getOrNull()
-        Status(
+    private fun lesen(g: Int) {
+        var pause = 5_000L
+        val aktuell = { laeuft && g == generation }
+        while (aktuell()) {
+            val basis = Server.adresse(this)
+            var c: HttpURLConnection? = null
+            if (basis != null) try {
+                c = URL("$basis/api/events").openConnection() as HttpURLConnection
+                c.connectTimeout = 10_000
+                c.readTimeout = 60_000 // Server schickt alle 15 s ein Keepalive
+                verbindung = c
+                if (c.responseCode == 200) {
+                    handler.post { serverDa = true; aktualisieren() }
+                    pause = 5_000L
+                    c.inputStream.bufferedReader().use { r -> Events.lesen(r) { e, d -> if (aktuell()) handler.post { ereignis(e, d) } } }
+                }
+            } catch (e: Exception) {
+                // nicht erreichbar oder Verbindung abgerissen: später erneut
+            } finally {
+                c?.disconnect()
+                if (verbindung === c) verbindung = null
+            }
+            if (!aktuell()) return
+            handler.post { serverDa = false; aktualisieren() }
+            try { Thread.sleep(pause) } catch (e: InterruptedException) { return }
+            pause = (pause * 2).coerceAtMost(60_000L)
+        }
+    }
+
+    private fun ereignis(event: String, data: String) {
+        val j = runCatching { JSONObject(data) }.getOrNull() ?: return
+        val nm = getSystemService(NotificationManager::class.java)
+        when (event) {
+            "telemetry" -> {
+                status = telemetrie(j)
+                telemetrieAm = System.currentTimeMillis()
+                for (m in watcher.pruefen(status, telemetrieAm, zonen)) melden(nm, m)
+                aktualisieren()
+            }
+            "zones" -> zonen = j.optJSONObject("queue") != null
+            "notice" -> {
+                val fehlend = j.optJSONArray("failed")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
+                Watcher.hinweis(j.optString("type"), fehlend)?.let { melden(nm, it) }
+            }
+        }
+    }
+
+    /** Telemetrie-Probe (gleicher Aufbau wie /api/state, /api/error, /api/charger des ESP) */
+    private fun telemetrie(j: JSONObject): Status? {
+        val state = j.optJSONObject("state") ?: return null
+        val err = j.optJSONObject("error")
+        val charger = j.optJSONObject("charger")
+        val roh = err?.optString("errorMessage").orEmpty()
+        return Status(
             uiState = state.optString("uiState"),
             robotState = state.optString("robotState"),
             hasError = err?.optBoolean("hasError") ?: false,
-            errorMessage = err?.optString("displayMessage").orEmpty()
-                .ifBlank { err?.optString("errorMessage").orEmpty() },
+            errorMessage = err?.optString("displayMessage").orEmpty().ifBlank { roh },
             fuelPercent = charger?.takeIf { it.has("fuelPercent") }?.optInt("fuelPercent"),
+            codes = CODE.findAll(roh).map { it.groupValues[1] }.toList(),
         )
-    } catch (e: Exception) {
-        null
     }
 
-    private fun get(pfad: String): String {
-        val c = URL("http://${BuildConfig.ESP_HOST}$pfad").openConnection() as HttpURLConnection
-        c.connectTimeout = 5000
-        c.readTimeout = 5000
-        try {
-            if (c.responseCode != 200) throw IllegalStateException("HTTP ${c.responseCode}")
-            return c.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            c.disconnect()
+    /** alle 20 s: ohne Telemetrie (ESP oder Server weg) gilt der Roboter als nicht erreichbar */
+    private fun pruefen() {
+        val jetzt = System.currentTimeMillis()
+        if (jetzt - telemetrieAm > TELEMETRIE_ALT_MS) {
+            status = null
+            val nm = getSystemService(NotificationManager::class.java)
+            for (m in watcher.pruefen(null, jetzt, zonen)) melden(nm, m)
         }
+        aktualisieren()
+        handler.postDelayed(::pruefen, INTERVALL_MS)
+    }
+
+    private fun aktualisieren() {
+        val text = if (!serverDa) "Server nicht erreichbar" else Watcher.zusammenfassung(status)
+        getSystemService(NotificationManager::class.java).notify(ID_DAUER, dauerNotification(text))
     }
 
     private fun melden(nm: NotificationManager, m: Meldung) {
@@ -141,6 +205,8 @@ class WatchService : Service() {
 
     companion object {
         private const val INTERVALL_MS = 20_000L
+        private const val TELEMETRIE_ALT_MS = 60_000L
+        private val CODE = Regex("""\((UI_(?:ALERT|ERROR)_[A-Z0-9_]+)\)""")
         private const val ID_DAUER = 1
         private const val KANAL_DAUER = "dauer"
         private const val KANAL_INFO = "info"

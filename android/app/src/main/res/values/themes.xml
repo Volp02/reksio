@@ -1,8 +1,10 @@
 <resources>
     <style name="Theme.Reksio" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:colorPrimary">#1F7A5C</item>
-        <item name="android:statusBarColor">#FFFFFF</item>
-        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:colorPrimary">#127A7D</item>
+        <item name="android:colorAccent">#127A7D</item>
+        <item name="android:windowBackground">@color/hintergrund</item>
+        <item name="android:statusBarColor">@color/hintergrund</item>
+        <item name="android:navigationBarColor">@color/hintergrund</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
     </style>

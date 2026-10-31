@@ -5,10 +5,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// Adressen im Heimnetz stehen nicht im (öffentlichen) Repo, sondern in
+// Die Serveradresse stellt man in der App ein (Suche im Netz oder Eingabe). Optional vorbelegt über
 // android/local.properties (gitignored):
 //   reksio.vacuulaUrl=http://<SERVER-IP>:8050
-//   reksio.espHost=<ESP-IP>
 val lokal = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
@@ -23,10 +22,9 @@ android {
         applicationId = "io.github.volp02.reksio"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
-        buildConfigField("String", "VACUULA_URL", "\"${einstellung("vacuulaUrl", "http://vacuula.local:8050")}\"")
-        buildConfigField("String", "ESP_HOST", "\"${einstellung("espHost", "neato.local")}\"")
+        versionCode = einstellung("versionCode", "2").toInt()
+        versionName = einstellung("versionName", "0.2.0")
+        buildConfigField("String", "VACUULA_URL", "\"${einstellung("vacuulaUrl", "")}\"")
     }
 
     // Signierschlüssel liegt nur lokal (gitignored), Pfad und Passwort in local.properties:
