@@ -49,12 +49,13 @@ function ControlCard() {
     const [confirmStop, setConfirmStop] = useState(false)
     const [toast, setToast] = useState<string>()
     const av = s.connected ? r?.availableCommands : undefined
+    const mapId = activeMap(useMaps(s.serial).data)?.id
 
     const primary = av?.pause
         ? { label: t.actions.pause, icon: <Pause />, run: () => gen3.pause(s.serial!) }
         : av?.resume
             ? { label: t.actions.resume, icon: <Play />, run: () => gen3.resume(s.serial!) }
-            : { label: t.actions.start, icon: <Play />, run: () => { const p = getPrefs(); return gen3.startHouse(s.serial!, p.mode, p.navigation) }, disabled: !av?.start }
+            : { label: t.actions.start, icon: <Play />, run: () => { const p = getPrefs(); return gen3.startWhole(s.serial!, mapId, p.mode, p.navigation) }, disabled: !av?.start }
 
     const send = async (cmd: Cmd, run: () => Promise<unknown>) => {
         setBusy(cmd)

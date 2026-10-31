@@ -75,6 +75,15 @@ export const gen3 = {
     getGeneralInfo: (s: string) => api.command<{ data: GeneralInfo }>(s, 'getGeneralInfo'),
     startHouse: (s: string, mode: CleaningMode, navigationMode: NavigationMode) =>
         api.command(s, 'startCleaning', { category: CleaningCategory.HOUSE, mode, navigationMode }),
+    /** ganze Karte (Kategorie Karte, damit No-Go-Linien gelten); lehnt der Roboter ab, normale Hausreinigung */
+    startWhole: async (s: string, mapId: string | undefined, mode: CleaningMode, navigationMode: NavigationMode) => {
+        if (mapId) {
+            const res = await api.command<{ result?: string }>(s, 'startCleaning', { category: CleaningCategory.MAP, mapId, mode, navigationMode })
+                .catch(() => undefined)
+            if (res?.result === 'ok') return res
+        }
+        return gen3.startHouse(s, mode, navigationMode)
+    },
     pause: (s: string) => api.command(s, 'pauseCleaning'),
     resume: (s: string) => api.command(s, 'resumeCleaning'),
     stop: (s: string) => api.command(s, 'stopCleaning'),

@@ -195,6 +195,7 @@ const de = {
     },
     settings: {
         title: 'Einstellungen',
+        appServer: 'Serveradresse der App',
         appearance: 'Darstellung',
         theme: 'Thema',
         system: 'System',

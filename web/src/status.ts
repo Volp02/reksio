@@ -56,7 +56,7 @@ export function robotStatus(t: Dict, connected: boolean, r: RobotStateData | und
 export function problemText(t: Dict, code: string | null | undefined): string | undefined {
     if (!code) return undefined
     const key = code.replace(/^ui_(error|alert)_/, '') as keyof Dict['errors']
-    return t.errors[key] ?? code.replace(/_/g, ' ')
+    return t.errors[key] ?? t.codes[`alert_${key}` as keyof Dict['codes']] ?? t.codes[`error_${key}` as keyof Dict['codes']] ?? code.replace(/_/g, ' ')
 }
 
 export function isCleaning(r: RobotStateData | undefined): boolean {

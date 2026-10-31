@@ -198,6 +198,7 @@ const en: Shape<Dict> = {
     },
     settings: {
         title: 'Settings',
+        appServer: 'App server address',
         appearance: 'Appearance',
         theme: 'Theme',
         system: 'System',

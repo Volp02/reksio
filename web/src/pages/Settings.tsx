@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BatteryMedium, Bot, ChevronRight, Cpu, LayoutDashboard, Palette, Server, SlidersHorizontal } from 'lucide-react'
+import { BatteryMedium, Bot, ChevronRight, Cpu, LayoutDashboard, Palette, Server, SlidersHorizontal, Smartphone } from 'lucide-react'
 import { gen3 } from '../api/client'
 import type { GeneralInfo } from '../api/types'
 import { useI18n, type Lang } from '../i18n'
@@ -9,6 +9,9 @@ import { useTheme, type Density, type ThemePref } from '../ui/theme'
 import { Card, KV, Label, Segmented, Switch } from '../ui/ui'
 import { DiagnosticsCard } from './Diagnostics'
 import './pages.css'
+
+/** läuft in der Android-App (WebView mit eigener Kennung): dort lässt sich die Serveradresse ändern */
+const IN_APP = /ReksioApp\//.test(navigator.userAgent)
 
 export function Settings() {
     const { t, lang, setLang } = useI18n()
@@ -48,6 +51,7 @@ export function Settings() {
             <Card icon={<SlidersHorizontal />} title={t.settings.advanced}>
                 <ul className="rows">
                     <li><a className="row" href="#/settings/esp"><Cpu className="row-i" /><span className="row-main"><Label className="row-t">{t.esp.title}</Label></span><ChevronRight className="row-i" /></a></li>
+                    {IN_APP && <li><a className="row" href="reksio-app://setup"><Smartphone className="row-i" /><span className="row-main"><Label className="row-t">{t.settings.appServer}</Label></span><ChevronRight className="row-i" /></a></li>}
                     <li><a className="row" href="#/settings/battery"><BatteryMedium className="row-i" /><span className="row-main"><Label className="row-t">{t.bat.title}</Label></span><ChevronRight className="row-i" /></a></li>
                 </ul>
             </Card>
