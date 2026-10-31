@@ -22,6 +22,8 @@ export interface Store {
     notice?: Notice
     /** Zonen, die der Server nacheinander reinigen lässt */
     zoneQueue?: ZoneQueue | null
+    /** Zeitpunkt der letzten Änderung am Zeitplan des Servers (neu laden) */
+    plansAt: number
     /** Sekundentakt für Frische-Anzeigen */
     now: number
     refresh: () => void
@@ -48,6 +50,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const [poses, setPoses] = useState<Pose[]>([])
     const [notice, setNotice] = useState<Notice>()
     const [zoneQueue, setZoneQueue] = useState<ZoneQueue | null>()
+    const [plansAt, setPlansAt] = useState(0)
     const [now, setNow] = useState(() => Date.now() / 1000)
     const [reload, setReload] = useState(0)
 
@@ -101,6 +104,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             const z = JSON.parse((e as MessageEvent).data) as { serial: string; queue: ZoneQueue | null }
             if (z.serial === serialRef.current) setZoneQueue(z.queue)
         })
+        es.addEventListener('plans', (e) => {
+            const p = JSON.parse((e as MessageEvent).data) as { serial: string }
+            if (p.serial === serialRef.current) setPlansAt(Date.now())
+        })
         es.onopen = () => setServerError(false)
         return () => es.close()
     }, [reload])
@@ -149,7 +156,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const value: Store = {
         server, serverError, robots, serial,
         name: (serial && robots?.[serial]?.name) || 'Reksio',
-        connected, robot, robotAt, telemetry, history, pose, poses, notice, zoneQueue, now,
+        connected, robot, robotAt, telemetry, history, pose, poses, notice, zoneQueue, plansAt, now,
         refresh: () => setReload((n) => n + 1),
         setZoneQueue,
         refreshRobot,

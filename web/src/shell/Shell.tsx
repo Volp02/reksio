@@ -33,6 +33,8 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
             zones_done: t.zones.finished,
             zones_failed: t.zones.failed,
             zones_stopped: t.zones.stoppedBusy,
+            plan_started: t.schedule.started_notice,
+            plan_skipped: t.schedule.skipped_notice,
         } as Record<string, string>)[store.notice?.type ?? '']
         if (text) setToast(text)
     }, [store.notice, t])

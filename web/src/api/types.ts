@@ -185,3 +185,20 @@ export interface EspSession {
 export interface BoundaryBackup { id: number; ts: number; boundaries: Boundary[] }
 
 export interface ZoneHistory { last: number | null; count: number }
+
+/** Termin im Zeitplan des Servers: ganze Karte (zones leer) oder Zonen nacheinander */
+export interface Plan {
+    id: string
+    enabled: boolean
+    /** 0 = Sonntag … 6 = Samstag (wie beim Roboter) */
+    days: number[]
+    /** „HH:MM“ in der Zeitzone des Servers */
+    time: string
+    mapId: string | null
+    zones: { id: string; name: string }[]
+    mode: CleaningMode
+    navigationMode: NavigationMode
+    /** nächste Startzeit (Unix), nur vom Server */
+    next?: number | null
+    last?: { due: string; ts: number; result: 'started' | 'skipped' | 'waiting'; reason: string | null }
+}
