@@ -791,13 +791,20 @@ export function QueueView({ queue, busy, onCancel }: { queue: ZoneQueue; busy: b
     return (<>
         <ul className="rows">
             {queue.zones.map((z, i) => {
-                const state = i < queue.index ? t.zones.done
-                    : i === queue.index ? (queue.status === 'waiting' ? wait : queue.busy ? t.zones.current : t.zones.starting)
-                        : i === queue.index + 1 ? t.zones.next : ''
+                const r = queue.results?.[i]
+                const failed = r?.status === 'failed'
+                const retry = i === queue.index && (r?.attempts.length ?? 0) > 0 && queue.status === 'waiting'
+                const state = failed ? t.zones.notCleaned
+                    : i < queue.index ? t.zones.done
+                        : i === queue.index ? (queue.status === 'checking' ? t.zones.checking
+                            : queue.status === 'waiting' ? (retry ? `${t.zones.retry} · ${wait}` : wait)
+                                : queue.busy ? t.zones.current : t.zones.starting)
+                            : i === queue.index + 1 ? t.zones.next : ''
                 return (
                     <li key={z.id + i}>
                         <div className={`row zrow${i === queue.index ? ' is-cur' : ''}`}>
-                            <span className="zrow-c zrow-c--n" aria-hidden>{i < queue.index ? <Check /> : i + 1}</span>
+                            <span className="zrow-c zrow-c--n rsteps-c" data-st={failed ? 'failed' : i < queue.index ? 'done' : undefined} aria-hidden>
+                                {failed ? <X /> : i < queue.index ? <Check /> : i + 1}</span>
                             <span className="row-main">
                                 <Label className="row-t">{z.name || t.zones.unnamed}</Label>
                                 {state && <Label className="row-s">{state}</Label>}

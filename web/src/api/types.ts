@@ -127,7 +127,28 @@ export interface PersistentMap {
     base: [number, number]
 }
 
-export interface RunSummary { id: string; persistent_map: string | null }
+/** Run-Daten des Roboters (gekürzt auf das, was die App nutzt) */
+export interface RunInfo {
+    status?: string; error?: string | null; launched_from?: string; category?: number
+    start_at?: string; end_at?: string; cleaned_area?: number; run_charge_at_start?: number; run_charge_at_end?: number
+}
+export interface RunSummary { id: string; persistent_map: string | null; run?: RunInfo }
+
+/** ein Versuch, eine Zone zu reinigen; `run` = ID des Runs, nur wenn wirklich gereinigt wurde */
+export interface JobAttempt {
+    start: number; end: number | null; run: string | null
+    result: 'done' | 'failed' | 'stopped' | 'notStarted' | null; reason: string | null; alerts: string[]
+}
+export interface JobZone { id: string; name: string; status: 'pending' | 'cleaning' | 'done' | 'failed' | 'stopped' | 'skipped'; attempts: JobAttempt[] }
+
+/** Auftrag: Zonenfolge (zones) oder Start des Zeitplans für die ganze Karte (zones leer) */
+export interface Job {
+    id: string; started: number; finished: number | null; source: 'app' | 'plan'; planId: string | null; mapId: string | null
+    status: 'running' | 'done' | 'partial' | 'failed' | 'stopped' | 'started'; reason: string | null; zones: JobZone[]
+}
+
+/** Fehler oder Hinweis des Roboters von Auftreten bis Verschwinden; code = alert_… / error_… */
+export interface Incident { ts: number; end: number | null; source: 'esp' | 'robot'; code: string; message: string | null }
 
 export interface MapData {
     width: number
@@ -164,11 +185,14 @@ export interface ZoneQueue {
     index: number
     mode: CleaningMode
     navigationMode: NavigationMode
-    status: 'cleaning' | 'waiting'
+    /** checking: Zone vorbei, Server wartet auf den Run (nur dann wurde wirklich gereinigt) */
+    status: 'cleaning' | 'checking' | 'waiting'
     since: number
     busy: boolean
     /** warum die nächste Zone noch nicht startet */
     reason: 'charging' | 'error' | 'blocked' | null
+    /** pro Zone: Stand und Versuche (fehlt bei Warteschlangen älterer Server) */
+    results?: { status: JobZone['status']; attempts: JobAttempt[] }[]
 }
 
 /** ESP-History-Sitzung (OpenNeato /api/history), Zusammenfassung einer Fahrt */

@@ -31,7 +31,7 @@ export interface Store {
     setZoneQueue: (q: ZoneQueue | null) => void
 }
 
-export interface Notice { type: string; ts: number; reason?: string | null }
+export interface Notice { type: string; ts: number; reason?: string | null; failed?: string[] }
 
 const Ctx = createContext<Store | null>(null)
 

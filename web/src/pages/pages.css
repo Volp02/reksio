@@ -54,6 +54,25 @@ div.zrow { cursor: default; }
 .runs .row[aria-current="true"] { color: var(--accent-text); }
 .runs .row[aria-current="true"] .row-s { color: var(--accent-text); }
 .runs-back { display: none; }
+/* Auftrag mit mehreren Zonen: Zonen als Folge mit Faden zwischen den Markern */
+.rsteps { list-style: none; margin: 0; padding: 0 0 var(--s-2); position: relative; }
+.rsteps::before { content: ""; position: absolute; left: 11px; top: 18px; bottom: 26px; width: 2px; background: var(--border-strong); }
+.rows .rsteps li + li { border-top: 0; }
+.rsteps-r { min-height: 0; padding: 6px 0; gap: var(--s-3); }
+.rsteps-c { position: relative; z-index: 1; }
+.rsteps-c[data-st="done"] { background: color-mix(in oklab, var(--ok) 24%, var(--surface)); border-color: var(--ok); color: var(--ok-text); }
+.rsteps-c[data-st="failed"] { background: var(--danger-soft); border-color: var(--danger); color: var(--danger-text); }
+.rsteps-c[data-st="skipped"], .rsteps-c[data-st="stopped"] { opacity: 0.6; }
+.rsteps-bad { color: var(--danger-text); }
+.rsteps .row-s { white-space: normal; overflow: visible; }
+a.rsteps-r[aria-current="true"] .row-t { color: var(--accent-text); }
+.rgroup[data-open] > .row { padding-bottom: var(--s-2); }
+.runs-detail .rsteps { margin-top: var(--s-3); }
+.rpart { display: inline-block; margin-bottom: var(--s-3); font-size: var(--fs-small); color: var(--accent-text); }
+.rinc { margin-top: var(--s-3); border-top: 1px solid var(--border); }
+.rinc-r { min-height: 0; padding: 8px 0; gap: var(--s-3); }
+.rinc-r[data-kind="error"] .rinc-i { color: var(--danger); }
+.rinc-r[data-kind="alert"] .rinc-i { color: var(--warn-text); }
 @container app (max-width: 900px) {
     .runs { grid-template-columns: minmax(0, 1fr); }
     .runs:not(.has-detail) .runs-detail { display: none; }

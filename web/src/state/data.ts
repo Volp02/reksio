@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, esp, gen3 } from '../api/client'
-import type { Boundary, EspSession, MapData, PersistentMap, Pose, RunSummary, ZoneHistory } from '../api/types'
+import type { Boundary, EspSession, Incident, Job, MapData, PersistentMap, Pose, RunSummary, ZoneHistory } from '../api/types'
 
 // Karten und Reinigungen ändern sich selten: einfacher Cache pro Sitzung
 const cache = new Map<string, Promise<unknown>>()
@@ -41,6 +41,16 @@ export function useMapData(serial: string | undefined, id: string | undefined) {
 
 export function useRuns(serial: string | undefined, version = 0) {
     return useLoad<RunSummary[]>(serial && `runs:${serial}`, () => api.runs(serial!), version)
+}
+
+export function useJobs(serial: string | undefined, version = 0) {
+    return useLoad<Job[]>(serial && `jobs:${serial}`, () => api.jobs(serial!), version)
+}
+
+/** Störungen im Zeitraum; Zeitraum auf ganze Sekunden, damit der Cache greift */
+export function useIncidents(serial: string | undefined, since: number | undefined, until: number | undefined) {
+    const a = since && Math.floor(since), b = until && Math.ceil(until)
+    return useLoad<Incident[]>(serial && a && b ? `incidents:${serial}:${a}:${b}` : undefined, () => api.incidents(serial!, a!, b!))
 }
 
 export function useRunData(serial: string | undefined, id: string | undefined) {

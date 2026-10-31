@@ -32,6 +32,7 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
             dustbin_emptied: t.maint.emptied,
             zones_done: t.zones.finished,
             zones_failed: t.zones.failed,
+            zones_partial: fill(t.zones.partial, { names: (store.notice?.failed ?? []).join(', ') }),
             zones_stopped: t.zones.stoppedBusy,
             plan_started: t.schedule.started_notice,
             plan_skipped: t.schedule.skipped_notice,
