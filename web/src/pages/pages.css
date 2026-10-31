@@ -72,3 +72,6 @@ div.zrow { cursor: default; }
 }
 .savebar-l { flex: 1; font-weight: 500; }
 @container app (max-width: 640px) { .savebar { bottom: calc(76px + env(safe-area-inset-bottom)); } }
+.zhist { gap: var(--s-3); }
+.zhist .row-main { min-width: 0; }
+.zhist-d { color: var(--text-2); }

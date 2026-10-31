@@ -1,4 +1,4 @@
-import type { Boundary, GeneralInfo, MapData, Pose, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry, ZoneQueue } from './types'
+import type { Boundary, BoundaryBackup, GeneralInfo, MapData, Pose, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry, ZoneHistory, ZoneQueue } from './types'
 import { CleaningCategory, type CleaningMode, type NavigationMode } from './types'
 
 // Relativ, damit die App auch hinter einem Präfix (HA-Ingress) läuft
@@ -42,6 +42,10 @@ export const api = {
     updateMap: (serial: string, id: string, name: string, enabled: boolean) =>
         request<void>('POST', `/robot/${serial}/maps/${id}`, { name, enabled }),
     deleteMap: (serial: string, id: string) => request<void>('DELETE', `/robot/${serial}/maps/${id}`),
+    /** gesicherte Stände der Zonen/Linien einer Karte, neueste zuerst (der Server sichert vorher den aktuellen) */
+    boundaryBackups: (serial: string, mapId: string) => request<BoundaryBackup[]>('GET', `/robot/${serial}/maps/${mapId}/backups`),
+    /** pro Zone: zuletzt gereinigt (Unix-Zeit) und Anzahl Fahrten, aus den Positionen des ESP */
+    zoneHistory: (serial: string, mapId: string) => request<Record<string, ZoneHistory>>('GET', `/robot/${serial}/maps/${mapId}/zone-history`),
     zones: (serial: string) => request<ZoneQueue | null>('GET', `/robot/${serial}/zones`),
     /** Zonen in dieser Reihenfolge nacheinander reinigen; die erste startet sofort */
     cleanZones: (serial: string, mapId: string, zones: { id: string; name: string }[], mode: CleaningMode, navigationMode: NavigationMode) =>

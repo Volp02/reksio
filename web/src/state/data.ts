@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, esp, gen3 } from '../api/client'
-import type { Boundary, EspSession, MapData, PersistentMap, RunSummary } from '../api/types'
+import type { Boundary, EspSession, MapData, PersistentMap, RunSummary, ZoneHistory } from '../api/types'
 
 // Karten und Reinigungen ändern sich selten: einfacher Cache pro Sitzung
 const cache = new Map<string, Promise<unknown>>()
@@ -51,6 +51,11 @@ export function useRunData(serial: string | undefined, id: string | undefined) {
 export function useBoundaries(serial: string | undefined, mapId: string | undefined, connected: boolean, version = 0) {
     return useLoad<Boundary[]>(serial && mapId && connected ? `bounds:${serial}:${mapId}` : undefined,
         () => gen3.getMapBoundaries(serial!, mapId!).then((r) => r.data.boundaries ?? []), version)
+}
+
+export function useZoneHistory(serial: string | undefined, mapId: string | undefined, version = 0) {
+    return useLoad<Record<string, ZoneHistory>>(serial && mapId ? `zone-history:${serial}:${mapId}` : undefined,
+        () => api.zoneHistory(serial!, mapId!), version)
 }
 
 /** Karte, auf der Reksio fährt: die aktivierte, sonst die neueste */

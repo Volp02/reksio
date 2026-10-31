@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Map as MapIcon, MousePointer2, Pencil, Pentagon, Plus, Route, Shapes, Sparkles, Spline, Square, Trash2, Undo2, X } from 'lucide-react'
+import { Check, History, Map as MapIcon, MousePointer2, Pencil, Pentagon, Plus, Route, Shapes, Sparkles, Spline, Square, Trash2, Undo2, X } from 'lucide-react'
 import { api, gen3 } from '../api/client'
 import type { Boundary, ZoneQueue } from '../api/types'
 import { fill, useI18n } from '../i18n'
 import { useStore } from '../state/store'
 import { getPrefs } from '../state/prefs'
-import { activeMap, useBoundaries, useMapData, useMaps } from '../state/data'
+import { activeMap, useBoundaries, useMapData, useMaps, useZoneHistory } from '../state/data'
 import { MapView, type MapInteraction, type MapViewport } from '../map/MapView'
 import { Legend } from '../map/Legend'
 import { useLive } from '../map/useLive'
@@ -15,6 +15,7 @@ import { fmtNumber } from '../format'
 import { Button, Card, Confirm, Empty, IconButton, InputRow, Label, Segmented, Switch, Toast } from '../ui/ui'
 import { CleanModes } from './CleanModes'
 import { MapsPanel } from './MapsPanel'
+import { BoundaryHistory } from './BoundaryHistory'
 import './pages.css'
 
 // Farben für neue Zonen und Linien (wie in der Neato-/Vacuula-App)
@@ -151,6 +152,19 @@ export function MapPage() {
     const vpRef = useRef<() => MapViewport>(undefined)
 
     const all = useMemo(() => bounds.data ?? [], [bounds.data])
+    // „zuletzt gereinigt“ neu berechnen, sobald sich der Zustand von Reksio ändert (z. B. Zone fertig)
+    const [histVersion, setHistVersion] = useState(0)
+    useEffect(() => { setHistVersion((v) => v + 1) }, [s.robot?.state])
+    const zoneHist = useZoneHistory(s.serial, current, histVersion)
+    const [showHistory, setShowHistory] = useState(false)
+    useEffect(() => { setShowHistory(false) }, [current, tab])
+    const cleaned = (id: string) => {
+        const last = zoneHist.data?.[id]?.last
+        if (!last) return undefined
+        const today = new Date(s.now * 1000).setHours(0, 0, 0, 0)
+        const days = last * 1000 >= today ? 0 : Math.ceil((today - last * 1000) / 86400000)
+        return days === 0 ? t.zones.cleanedToday : days === 1 ? t.zones.cleanedYesterday : fill(t.zones.cleanedDays, { n: days })
+    }
     const zones = all.filter((b) => b.type === 'polygon')
     const queue = s.zoneQueue && s.zoneQueue.mapId === current ? s.zoneQueue : undefined
     const cells: [number, number] = data.data ? [data.data.width, data.data.height] : [1, 1]
@@ -247,7 +261,7 @@ export function MapPage() {
     }
 
     /** Änderung auf die aktuelle Liste vom Roboter anwenden: eine veraltete oder leere Ansicht überschreibt nie andere Zonen */
-    const save = async (change: (list: Boundary[]) => Boundary[]) => {
+    const save = async (change: (list: Boundary[]) => Boundary[], done = t.zones.saved): Promise<boolean> => {
         setBusy('save')
         try {
             const fresh = (await gen3.getMapBoundaries(s.serial!, current!)).data?.boundaries
@@ -264,9 +278,11 @@ export function MapPage() {
             }
             setVersion((v) => v + 1)
             setDraft(undefined)
-            setToast(t.zones.saved)
+            setToast(done)
+            return true
         } catch {
             setToast(t.zones.saveFailed)
+            return false
         } finally {
             setBusy(undefined)
         }
@@ -660,7 +676,8 @@ export function MapPage() {
                                                 <span className="zrow-c" style={{ ['--c' as string]: b.color }} aria-hidden>{n >= 0 ? n + 1 : ''}</span>
                                                 <span className="row-main">
                                                     <Label className="row-t">{b.name || t.zones.unnamed}</Label>
-                                                    <Label className="row-s">{fill(t.zones.area, { a: fmtNumber(locale, areaM2(b.vertices, cells), 1) })}</Label>
+                                                    <Label className="row-s">{[fill(t.zones.area, { a: fmtNumber(locale, areaM2(b.vertices, cells), 1) }), cleaned(b.id)]
+                                                        .filter(Boolean).join(' · ')}</Label>
                                                 </span>
                                                 {n >= 0 && <Check className="row-i zrow-ok" />}
                                             </button>
@@ -680,7 +697,12 @@ export function MapPage() {
                         </>}
                     </>)}
 
-                    {tab === 'edit' && !draft && (<>
+                    {tab === 'edit' && !draft && showHistory && current && (
+                        <BoundaryHistory mapId={current} current={all} busy={busy === 'save'} onClose={() => setShowHistory(false)}
+                            onRestore={async (list) => { if (await save(() => list, t.zones.restored)) setShowHistory(false) }} />
+                    )}
+
+                    {tab === 'edit' && !draft && !showHistory && (<>
                         {all.length ? (
                             <ul className="rows">
                                 {all.map((b) => (
@@ -700,6 +722,7 @@ export function MapPage() {
                             </ul>
                         ) : <Empty icon={<Shapes />} label={bounds.loading ? t.common.loading : t.zones.none} />}
                         <div className="actions zpanel-foot">
+                            <Button variant="ghost" icon={<History />} label={t.zones.history} disabled={!current} onClick={() => setShowHistory(true)} />
                             <Button icon={<Route />} label={t.zones.newLine} disabled={!s.connected || !data.data} onClick={() => create('polyline')} />
                             <Button icon={<Plus />} label={t.zones.newZone} disabled={!s.connected || !data.data} onClick={() => create('polygon')} />
                         </div>

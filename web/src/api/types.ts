@@ -181,3 +181,7 @@ export interface EspSession {
         errorsDuringClean: number; batteryStart: number; batteryEnd: number
     } | null
 }
+
+export interface BoundaryBackup { id: number; ts: number; boundaries: Boundary[] }
+
+export interface ZoneHistory { last: number | null; count: number }
