@@ -16,7 +16,7 @@ import json
 import queue
 import os
 from vacuula_server.gen4.handlers import robot_send_request
-from vacuula_server import zone_queue
+from vacuula_server import boundary_backup, zone_queue
 from vacuula_server.server_tz import server_timezone, utc_offset_minutes
 
 from typing import TYPE_CHECKING, Sequence
@@ -250,6 +250,22 @@ def _send_quietly(write):
     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
         pass
 
+def _boundaries_map(data: dict) -> str | None:
+    """Karten-ID, wenn der Befehl die Zonen/Linien einer Gen3-Karte ersetzt"""
+    params = data.get("params") or {}
+    if data.get("cmd") == "setMapBoundaries" and isinstance(params.get("mapId"), str) \
+            and isinstance(params.get("boundaries"), list):
+        return params["mapId"]
+    return None
+
+
+def _result_ok(content) -> bool:
+    try:
+        return json.loads(content).get("result") == "ok"
+    except (TypeError, ValueError, AttributeError):
+        return False
+
+
 def post_robot_command(req: RouterHandler, serial: str) -> None:
     """POST /robots/{serial}/command - send command to robot"""
     if not (data := req.read_json()): return
@@ -268,6 +284,7 @@ def post_robot_command(req: RouterHandler, serial: str) -> None:
 
     conn = robot_connections[serial]
     slot = PendingRequest(serial, data.get("cmd"))
+    bounds_map = None
     if (conn.gen == Generation.GEN4):
         # gen4
         req_id, err = robot_send_request(conn, data, slot)
@@ -276,6 +293,10 @@ def post_robot_command(req: RouterHandler, serial: str) -> None:
             return
     elif (conn.gen == Generation.GEN3) and isinstance(conn.conn, Gen2Gen3Conn):
         # gen3
+        bounds_map = _boundaries_map(data)
+        if bounds_map:
+            # Stand vor dem Überschreiben sichern
+            boundary_backup.snapshot(serial, bounds_map)
         req_id, msg = build_command(serial, data)
         pending_requests[str(req_id)] = slot
         logger.debug("Sending command to robot %s: %s", serial, data)
@@ -293,6 +314,8 @@ def post_robot_command(req: RouterHandler, serial: str) -> None:
     slot.event.wait(COMMAND_TIMEOUT_S)
     pending_requests.pop(key, None)
     if slot.event.is_set():
+        if conn.gen == Generation.GEN3 and bounds_map and slot.status == 200 and _result_ok(slot.content):
+            boundary_backup.store(serial, bounds_map, data["params"]["boundaries"])
         _send_quietly(lambda: req.send_response_data(slot.content, True, slot.status))
     else:
         _send_quietly(lambda: req.send_error_response(504, "Robot did not answer in time"))

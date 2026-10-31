@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import json
 
-from vacuula_server import zone_queue
+from vacuula_server import boundary_backup, zone_history, zone_queue
+from vacuula_server.db import get_session
+from vacuula_server.models.persistent_map import PersistentMap
 from vacuula_server.generation import get_robot_by_serial
 from vacuula_server.state import robot_connections
 
@@ -46,3 +48,25 @@ def delete_zones(req: RouterHandler, serial: str) -> None:
     """DELETE /robot/<serial>/zones - restliche Zonen verwerfen (laufende Zone läuft weiter)"""
     zone_queue.cancel(serial)
     req.send_ok()
+
+
+def _gen3_map(serial: str, map_id: str) -> bool:
+    with get_session() as session:
+        m = session.get(PersistentMap, map_id)
+    return m is not None and m.robot == serial
+
+
+def get_boundary_backups(req: RouterHandler, serial: str, map_id: str) -> None:
+    """GET /robot/<serial>/maps/<map_id>/backups - gesicherte Stände der Zonen/Linien, neueste zuerst"""
+    if not _gen3_map(serial, map_id):
+        return req.send_not_found("Map not found")
+    if serial in robot_connections:
+        boundary_backup.snapshot(serial, map_id)
+    req.send_ok(boundary_backup.listing(serial, map_id))
+
+
+def get_zone_history(req: RouterHandler, serial: str, map_id: str) -> None:
+    """GET /robot/<serial>/maps/<map_id>/zone-history - {zoneId: {last, count}} aus den Posen"""
+    if not _gen3_map(serial, map_id):
+        return req.send_not_found("Map not found")
+    req.send_ok(zone_history.history(serial, map_id) or {})
