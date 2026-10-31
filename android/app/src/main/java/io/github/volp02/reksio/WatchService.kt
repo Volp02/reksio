@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
+import android.webkit.CookieManager
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -35,6 +36,7 @@ class WatchService : Service() {
     private var telemetrieAm = 0L
     private var serverDa = false
     private var zonen = false
+    private var anmeldung = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -86,11 +88,15 @@ class WatchService : Service() {
             var c: HttpURLConnection? = null
             if (basis != null) try {
                 c = URL("$basis/api/events").openConnection() as HttpURLConnection
+                // Anmeldung der Weboberfläche mitbenutzen (nur nötig, wenn auf dem Server ein Passwort gesetzt ist)
+                runCatching { CookieManager.getInstance().getCookie(basis) }.getOrNull()?.let { c.setRequestProperty("Cookie", it) }
                 c.connectTimeout = 10_000
                 c.readTimeout = 60_000 // Server schickt alle 15 s ein Keepalive
                 verbindung = c
-                if (c.responseCode == 200) {
-                    handler.post { serverDa = true; aktualisieren() }
+                if (c.responseCode == 401) {
+                    handler.post { anmeldung = true; aktualisieren() }
+                } else if (c.responseCode == 200) {
+                    handler.post { serverDa = true; anmeldung = false; aktualisieren() }
                     pause = 5_000L
                     c.inputStream.bufferedReader().use { r -> Events.lesen(r) { e, d -> if (aktuell()) handler.post { ereignis(e, d) } } }
                 }
@@ -154,7 +160,11 @@ class WatchService : Service() {
     }
 
     private fun aktualisieren() {
-        val text = if (!serverDa) "Server nicht erreichbar" else Watcher.zusammenfassung(status)
+        val text = when {
+            anmeldung -> "Anmeldung nötig, App öffnen"
+            !serverDa -> "Server nicht erreichbar"
+            else -> Watcher.zusammenfassung(status)
+        }
         getSystemService(NotificationManager::class.java).notify(ID_DAUER, dauerNotification(text))
     }
 

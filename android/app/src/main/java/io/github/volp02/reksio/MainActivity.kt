@@ -16,6 +16,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.webkit.CookieManager
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -43,6 +44,7 @@ class MainActivity : Activity() {
     private val main = Handler(Looper.getMainLooper())
     private var nsd: NsdManager? = null
     private var suche: NsdManager.DiscoveryListener? = null
+    private var letzterCookie: String? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +62,13 @@ class MainActivity : Activity() {
                 if (request.url.host == Server.adresse(this@MainActivity)?.let { Uri.parse(it).host }) return false
                 startActivity(Intent(Intent.ACTION_VIEW, request.url))
                 return true
+            }
+
+            override fun onPageFinished(view: WebView, url: String) {
+                // Anmeldung für den Wächter sichern; nach einer Anmeldung neu verbinden
+                CookieManager.getInstance().flush()
+                val cookie = CookieManager.getInstance().getCookie(url).orEmpty()
+                if (cookie != letzterCookie) { letzterCookie = cookie; WatchService.starten(this@MainActivity) }
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
