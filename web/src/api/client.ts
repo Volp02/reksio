@@ -16,7 +16,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     })
     if (!res.ok) throw new HttpError(res.status, await res.text().catch(() => res.statusText))
     const text = await res.text()
-    return (text ? JSON.parse(text) : undefined) as T
+    // manche Endpunkte antworten nur mit „OK“ statt JSON
+    try {
+        return (text ? JSON.parse(text) : undefined) as T
+    } catch {
+        return undefined as T
+    }
 }
 
 // IDs (ISO-Zeitpunkte mit ':') unverändert senden: der Server dekodiert Pfade nicht
