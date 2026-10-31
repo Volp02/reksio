@@ -14,3 +14,6 @@ Erstes Release mit fertigem Server-Image, App und ESP-Firmware.
 - **Start** reinigt die ganze Karte, damit No-Go-Linien gelten.
 - **Daten bleiben auf dem Server**: Strecken dauerhaft, Telemetrie nach 30 Tagen auf einen Wert pro Minute ausgedünnt.
 - **Android-App 0.2.0**: Serveradresse in der App (Suche im Netz), Benachrichtigungen vom Server statt vom ESP.
+- **Zugang**: optionales Passwort (Einstellungen → Zugang); dann braucht jede /api-Anfrage eine Anmeldung (Cookie oder
+  `Authorization: Bearer <token>` von `POST /api/auth/login`). Die Endpunkte des Roboters bleiben unberührt.
+- **Kein CORS mehr**: fremde Webseiten können den Server nicht mehr über den Browser steuern (bei Bedarf `CORS_ORIGIN`).
