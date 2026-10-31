@@ -4,7 +4,8 @@ Der Zeitplan des D7 kann pro Termin höchstens eine Zone. Deshalb startet der Se
 ganze Karte (startCleaning, Kategorie Karte) oder die Zonen über die Zonenfolge (zone_queue). Ist Reksio dann nicht
 bereit (reinigt, Fehler, Akku unter zone_queue.MIN_CHARGE, nicht verbunden), wird es bis WINDOW_S nach der Startzeit
 jede Minute erneut versucht, danach gilt der Termin als ausgelassen. Termine liegen in app_setting; `lastDue` verhindert,
-dass ein Termin nach einem Neustart des Servers doppelt startet.
+dass ein Termin nach einem Neustart des Servers doppelt startet. `skip` (Datum, YYYY-MM-DD) lässt genau einen Start aus
+("Heute auslassen" in der App).
 """
 from __future__ import annotations
 
@@ -32,6 +33,7 @@ WINDOW_S = 60 * 60
 CATEGORY_HOUSE, CATEGORY_MAP = 2, 4
 STATE_IDLE = 1
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 _lock = threading.Lock()
 
@@ -76,7 +78,8 @@ def validate(raw) -> list[dict] | None:
                 or p.get("mode", 1) not in (1, 2) or p.get("navigationMode", 1) not in (1, 2, 3) \
                 or not isinstance(zones, list) \
                 or not all(isinstance(z, dict) and isinstance(z.get("id"), str) and z["id"] for z in zones) \
-                or (zones and not isinstance(p.get("mapId"), str)):
+                or (zones and not isinstance(p.get("mapId"), str)) \
+                or not (p.get("skip") is None or (isinstance(p["skip"], str) and DATE_RE.match(p["skip"]))):
             return None
         out.append({
             "id": p["id"] if isinstance(p.get("id"), str) and p["id"] else str(uuid.uuid4()),
@@ -87,6 +90,7 @@ def validate(raw) -> list[dict] | None:
             "zones": [{"id": z["id"], "name": str(z.get("name") or "")} for z in zones],
             "mode": p.get("mode", 1),
             "navigationMode": p.get("navigationMode", 1),
+            "skip": p.get("skip"),
         })
     return out
 
@@ -109,7 +113,7 @@ def next_run(plan: dict, now: datetime) -> float | None:
     for i in range(8):
         day = now + timedelta(days=i)
         due = _due(plan, day)
-        if due and due > now:
+        if due and due > now and due.date().isoformat() != plan.get("skip"):
             return due.timestamp()
     return None
 
@@ -194,6 +198,11 @@ def _tick() -> None:
                 continue
             due = _due(plan, now)
             if not due or now < due or plan.get("lastDue") == due.isoformat():
+                continue
+            if plan.get("skip") == due.date().isoformat():
+                _record(serial, plan["id"], lastDue=due.isoformat(), skip=None,
+                        last={"due": due.isoformat(), "ts": time.time(), "result": "skipped", "reason": "user"})
+                logger.info("plan %s on %s skipped by user", plan["id"], serial)
                 continue
             if (now - due).total_seconds() > WINDOW_S:
                 reason = (plan.get("last") or {}).get("reason") if (plan.get("last") or {}).get("due") == due.isoformat() else None
