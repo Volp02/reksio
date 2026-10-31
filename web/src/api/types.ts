@@ -198,6 +198,8 @@ export interface Plan {
     zones: { id: string; name: string }[]
     mode: CleaningMode
     navigationMode: NavigationMode
+    /** diesen Start auslassen (YYYY-MM-DD, Zeitzone des Servers) */
+    skip?: string | null
     /** nächste Startzeit (Unix), nur vom Server */
     next?: number | null
     last?: { due: string; ts: number; result: 'started' | 'skipped' | 'waiting'; reason: string | null }

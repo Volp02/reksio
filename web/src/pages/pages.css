@@ -103,7 +103,10 @@ div.zrow { cursor: default; }
 .splan-t { flex: none; width: 3.4em; font-size: var(--fs-h2); font-weight: 600; font-variant-numeric: tabular-nums; }
 .splan[data-off] .splan-t, .splan[data-off] .row-t { color: var(--text-3); }
 .splan-warn { color: var(--warn-text); }
+.splan-st { white-space: normal; overflow: visible; }
 .splan-sw { flex: none; }
+.splan-skip { flex: none; }
+.week-p[data-skip] { text-decoration: line-through; opacity: 0.55; }
 .dayp { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--s-1); align-self: stretch; }
 .dayp-b {
     min-height: 40px; border-radius: var(--r-s); border: 1px solid var(--border-strong); background: var(--surface);
@@ -115,5 +118,8 @@ div.zrow { cursor: default; }
     .week { gap: 2px; }
     .week-d { padding-inline: 2px; }
     .week-p { font-size: 11px; letter-spacing: -0.01em; }
+    /* „auslassen“ unter den Text, damit Tage und Ziel lesbar bleiben */
+    .splan { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--s-1); }
+    .splan-skip { grid-column: 1 / -1; grid-row: 2; justify-self: start; margin-left: calc(3.4 * var(--fs-h2) + var(--s-4) - var(--s-2)); }
 }
 .sched-ed { scroll-margin-top: var(--s-5); }

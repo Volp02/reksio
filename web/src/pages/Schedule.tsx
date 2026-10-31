@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarClock, Check, Plus, Trash2, X } from 'lucide-react'
+import { CalendarClock, Check, Plus, SkipForward, Trash2, Undo2, X } from 'lucide-react'
 import { api, gen3 } from '../api/client'
 import { CleaningMode, NavigationMode, type Plan, type ScheduleEvent } from '../api/types'
 import { fmtTime, fmtWhen } from '../format'
@@ -62,6 +62,20 @@ export function Schedule() {
         return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(wd)
     }, [tz, s.now])
 
+    // Kalenderdatum (YYYY-MM-DD) in der Zeitzone des Servers, wie `skip` beim Server
+    const dateOf = (ts: number) => new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: tz }).format(ts * 1000)
+    const weekday = (date: string) => new Date(`${date}T12:00:00Z`).getUTCDay()
+    const dayName = (date: string) => (date === dateOf(s.now) ? t.schedule.today
+        : date === dateOf(s.now + 86400) ? t.schedule.tomorrow : t.schedule.daysLong[weekday(date)])
+    const waitingDue = (p: Plan) => (p.last?.result === 'waiting' && s.now - Date.parse(p.last.due) / 1000 < 3600 ? Date.parse(p.last.due) / 1000 : undefined)
+    /** ausgelassener Start, solange er noch bevorsteht */
+    const skipped = (p: Plan) => (p.enabled && p.skip && p.skip >= dateOf(s.now) ? p.skip : undefined)
+    /** Start, den „auslassen“ träfe: der gerade wartende, sonst der nächste */
+    const upcoming = (p: Plan) => {
+        const ts = waitingDue(p) ?? p.next ?? undefined
+        return p.enabled && ts ? dateOf(ts) : undefined
+    }
+
     const sorted = useMemo(() => [...(plans ?? [])].sort((a, b) => a.time.localeCompare(b.time)), [plans])
 
     const daysLabel = (days: number[]) => {
@@ -75,20 +89,25 @@ export function Schedule() {
 
     const status = (p: Plan): { text: string; tone?: 'warn' } | undefined => {
         const last = p.last
-        if (last?.result === 'waiting' && s.now - Date.parse(last.due) / 1000 < 3600) {
+        const skip = skipped(p)
+        if (skip) return { text: [fill(t.schedule.skippedDay, { day: dayName(skip) }), nextText(p)].filter(Boolean).join(' · ') }
+        if (last?.result === 'skipped' && last.reason === 'user' && s.now - last.ts < 86400) {
+            return { text: [fill(t.schedule.skippedDay, { day: dayName(dateOf(Date.parse(last.due) / 1000)) }), nextText(p)].filter(Boolean).join(' · ') }
+        }
+        if (waitingDue(p) !== undefined && last) {
             return { text: [t.schedule.waiting, t.schedule.reasons[last.reason ?? ''] ?? last.reason].filter(Boolean).join(' · '), tone: 'warn' }
         }
         if (last?.result === 'skipped' && s.now - last.ts < 86400) {
             return { text: [fill(t.schedule.skipped, { when: fmtWhen(locale, tz, last.ts, s.now, t.overview, true) }), t.schedule.reasons[last.reason ?? '']].filter(Boolean).join(' · '), tone: 'warn' }
         }
-        if (p.enabled && p.next) {
-            const days = Math.round((new Date(p.next * 1000).setHours(0, 0, 0, 0) - new Date(s.now * 1000).setHours(0, 0, 0, 0)) / 86400000)
-            const day = days === 0 ? t.schedule.today
-                : t.schedule.daysLong[new Date(p.next * 1000).getDay()]
-            return { text: fill(t.schedule.next, { when: `${day}, ${fmtTime(locale, tz, p.next)}` }) }
-        }
-        return undefined
+        const next = nextText(p)
+        return next ? { text: next } : undefined
     }
+    function nextText(p: Plan) {
+        return p.enabled && p.next ? fill(t.schedule.next, { when: `${dayName(dateOf(p.next))}, ${fmtTime(locale, tz, p.next)}` }) : undefined
+    }
+    const setSkip = (p: Plan, skip: string | null) =>
+        store((plans ?? []).map((x) => (x.id === p.id ? { ...x, skip } : x)), skip ? fill(t.schedule.skippedDay, { day: dayName(skip) }) : undefined)
 
     const store = async (next: Plan[], done?: string) => {
         if (!s.serial) return false
@@ -150,6 +169,7 @@ export function Schedule() {
                                         <Label className="week-h">{t.schedule.days[d]}</Label>
                                         {sorted.filter((p) => p.days.includes(d)).map((p) => (
                                             <button key={p.id} type="button" className="week-p" data-off={!p.enabled || undefined}
+                                                data-skip={(skipped(p) && weekday(skipped(p)!) === d) || undefined}
                                                 aria-pressed={draft?.id === p.id} title={`${p.time} · ${targetLabel(p)}`} onClick={() => open(p)}>
                                                 {p.time}
                                             </button>
@@ -168,9 +188,17 @@ export function Schedule() {
                                                     <span className="row-main">
                                                         <Label className="row-t">{daysLabel(p.days)}</Label>
                                                         <Label className="row-s">{targetLabel(p)}</Label>
-                                                        {st && <Label className={`row-s${st.tone ? ' splan-warn' : ''}`}>{st.text}</Label>}
+                                                        {st && <Label className={`row-s splan-st${st.tone ? ' splan-warn' : ''}`}>{st.text}</Label>}
                                                     </span>
                                                 </button>
+                                                {skipped(p) ? (
+                                                    <Button size="s" variant="ghost" className="splan-skip" icon={<Undo2 />} label={t.schedule.unskip}
+                                                        disabled={busy} onClick={() => setSkip(p, null)} />
+                                                ) : upcoming(p) && (
+                                                    <Button size="s" variant="ghost" className="splan-skip" icon={<SkipForward />}
+                                                        label={fill(t.schedule.skipDay, { day: dayName(upcoming(p)!) })}
+                                                        disabled={busy} onClick={() => setSkip(p, upcoming(p)!)} />
+                                                )}
                                                 <label className="switch splan-sw">
                                                     <input type="checkbox" role="switch" checked={p.enabled} disabled={busy} aria-label={`${p.time} ${daysLabel(p.days)}`}
                                                         onChange={(e) => store((plans ?? []).map((x) => (x.id === p.id ? { ...x, enabled: e.target.checked } : x)))} />
