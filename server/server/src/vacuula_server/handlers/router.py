@@ -1,7 +1,9 @@
 from __future__ import annotations
 from http.server import BaseHTTPRequestHandler
 import logging
+from vacuula_server import auth
 from vacuula_server.constants import BASE_DIR
+from vacuula_server.env import CORS_ORIGIN
 from vacuula_server.handlers.route_matcher import BrainslugHandler, BEEHIVE_ROUTES, NUCLEO_ROUTES, APP_ROUTES, S3_ROUTES
 import json
 import socket
@@ -30,9 +32,9 @@ class RouterHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def end_headers(self):
-        """Override to add CORS headers to app responses"""
-        if (self.path.startswith("/api/")):
-            self.send_header("Access-Control-Allow-Origin", "*")
+        """CORS nur, wenn ausdrücklich erlaubt (CORS_ORIGIN): sonst könnte jede Webseite im Browser den Roboter steuern"""
+        if CORS_ORIGIN and self.path.startswith("/api/"):
+            self.send_header("Access-Control-Allow-Origin", CORS_ORIGIN)
             self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         super().end_headers()
@@ -124,6 +126,8 @@ class RouterHandler(BaseHTTPRequestHandler):
         accept = self.headers.get("Accept", "")
         
         if self.path.startswith("/api/"):
+            if not auth.allowed(self.command, self.path, self.headers):
+                return self.send_error_response(401, "login required")
             return BrainslugHandler(APP_ROUTES, self)
         elif accept == "application/vnd.neato.beehive.v1+json":
             return BrainslugHandler(BEEHIVE_ROUTES, self)
@@ -151,7 +155,7 @@ class RouterHandler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         self.route()
 
-    def send_response_data(self, content, close=True, status=200, content_type="application/json", cache_control: str | None = None, content_disposition: str | None = None):
+    def send_response_data(self, content, close=True, status=200, content_type="application/json", cache_control: str | None = None, content_disposition: str | None = None, extra_headers: dict[str, str] | None = None):
         if isinstance(content, (dict, list)):
             content = json.dumps(content).encode("utf-8")
         elif isinstance(content, str):
@@ -164,6 +168,8 @@ class RouterHandler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", cache_control)
         if content_disposition is not None:
             self.send_header("Content-Disposition", content_disposition)
+        for k, v in (extra_headers or {}).items():
+            self.send_header(k, v)
         self.send_header("Content-Length", str(len(content)))
         if close:
             self.send_header("Connection", "close")

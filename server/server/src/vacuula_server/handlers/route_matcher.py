@@ -13,6 +13,7 @@ from .esp import get_esp, put_esp, proxy_esp
 from .zones import get_zones, post_zones, delete_zones, get_boundary_backups, get_zone_history
 from .plans import get_plans, put_plans
 from .history import get_jobs, get_incidents
+from .auth import get_auth, post_login, post_logout, put_password
 from vacuula_server.handlers.setup import get_cert, get_log, get_log_full
 
 #gen4
@@ -48,6 +49,10 @@ BEEHIVE_ROUTES: List[Tuple[str, str, Handler]] = [
 
 APP_ROUTES: List[Tuple[str, str, Handler]] = [
     ("GET", "/api/cert", get_cert),
+    ("GET", "/api/auth", get_auth),
+    ("POST", "/api/auth/login", post_login),
+    ("POST", "/api/auth/logout", post_logout),
+    ("PUT", "/api/auth/password", put_password),
     ("GET", "/api/log", get_log),
     ("GET", "/api/log/full", get_log_full),
     ("GET", "/api/server", get_server_info),
