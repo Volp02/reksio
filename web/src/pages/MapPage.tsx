@@ -152,6 +152,11 @@ export function MapPage() {
     const vpRef = useRef<() => MapViewport>(undefined)
 
     const all = useMemo(() => bounds.data ?? [], [bounds.data])
+    useEffect(() => {
+        if (!bounds.error) return
+        const id = setTimeout(() => setVersion((v) => v + 1), 3000)
+        return () => clearTimeout(id)
+    }, [bounds.error])
     // „zuletzt gereinigt“ neu berechnen, sobald sich der Zustand von Reksio ändert (z. B. Zone fertig)
     const [histVersion, setHistVersion] = useState(0)
     useEffect(() => { setHistVersion((v) => v + 1) }, [s.robot?.state])
@@ -615,6 +620,12 @@ export function MapPage() {
             },
         }
 
+    // Laden fehlgeschlagen: nie „Keine Zonen“ zeigen, sonst sieht es aus, als wären sie gelöscht
+    const zonesEmpty = bounds.error
+        ? <Empty icon={<Shapes />} label={t.zones.loadFailed}
+            action={<Button size="s" label={t.common.retry} onClick={() => setVersion((v) => v + 1)} />} />
+        : <Empty icon={<Shapes />} label={bounds.loading || !bounds.data ? t.common.loading : t.zones.none} />
+
     const shown = tab === 'edit' && draft ? all.filter((b) => b.id !== draft.b.id) : all
     const canStart = s.connected && !!s.robot?.availableCommands?.start
     const rowHover = (id: string) => ({ onMouseEnter: () => setHoverId(id), onMouseLeave: () => setHoverId(undefined) })
@@ -685,7 +696,7 @@ export function MapPage() {
                                     )
                                 })}
                             </ul>
-                        ) : <Empty icon={<Shapes />} label={bounds.loading ? t.common.loading : t.zones.none} />}
+                        ) : zonesEmpty}
                         {zones.length > 0 && <>
                             <CleanModes />
                             <div className="actions zpanel-foot">
@@ -720,11 +731,11 @@ export function MapPage() {
                                     </li>
                                 ))}
                             </ul>
-                        ) : <Empty icon={<Shapes />} label={bounds.loading ? t.common.loading : t.zones.none} />}
+                        ) : zonesEmpty}
                         <div className="actions zpanel-foot">
                             <Button variant="ghost" icon={<History />} label={t.zones.history} disabled={!current} onClick={() => setShowHistory(true)} />
-                            <Button icon={<Route />} label={t.zones.newLine} disabled={!s.connected || !data.data} onClick={() => create('polyline')} />
-                            <Button icon={<Plus />} label={t.zones.newZone} disabled={!s.connected || !data.data} onClick={() => create('polygon')} />
+                            <Button icon={<Route />} label={t.zones.newLine} disabled={!s.connected || !data.data || !bounds.data} onClick={() => create('polyline')} />
+                            <Button icon={<Plus />} label={t.zones.newZone} disabled={!s.connected || !data.data || !bounds.data} onClick={() => create('polygon')} />
                         </div>
                     </>)}
 

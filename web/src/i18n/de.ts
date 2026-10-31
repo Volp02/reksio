@@ -330,6 +330,7 @@ const de = {
         clean: 'Reinigen',
         edit: 'Bearbeiten',
         none: 'Keine Zonen',
+        loadFailed: 'Zonen nicht geladen',
         cleanN: '{n} Zonen reinigen',
         cleanOne: 'Zone reinigen',
         clear: 'Auswahl leeren',

@@ -333,6 +333,7 @@ const en: Shape<Dict> = {
         clean: 'Clean',
         edit: 'Edit',
         none: 'No zones',
+        loadFailed: 'Zones not loaded',
         cleanN: 'Clean {n} zones',
         cleanOne: 'Clean zone',
         clear: 'Clear selection',
