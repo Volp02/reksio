@@ -108,16 +108,17 @@ export function Switch({ label, checked, onChange }: { label: string; checked: b
 }
 
 /** Beschriftete Zeile mit Eingabe rechts (Text, Zahl, Uhrzeit) */
-export function InputRow({ label, value, onChange, type = 'text', placeholder, unit, min, max, step, mono, invalid }: {
-    label: string; value: string | number; onChange: (v: string) => void; type?: 'text' | 'number' | 'time'
+export function InputRow({ label, value, onChange, type = 'text', placeholder, unit, min, max, step, mono, invalid, autoComplete, autoFocus }: {
+    label: string; value: string | number; onChange: (v: string) => void; type?: 'text' | 'number' | 'time' | 'password'
     placeholder?: string; unit?: string; min?: number; max?: number; step?: number; mono?: boolean; invalid?: boolean
+    autoComplete?: string; autoFocus?: boolean
 }) {
     return (
         <label className="irow">
             <Label className="irow-l">{label}</Label>
             <span className="irow-c">
                 <input className={`input${mono ? ' mono' : ''}`} type={type} value={value} placeholder={placeholder}
-                    min={min} max={max} step={step} aria-invalid={invalid || undefined}
+                    min={min} max={max} step={step} aria-invalid={invalid || undefined} autoComplete={autoComplete} autoFocus={autoFocus}
                     onChange={(e) => onChange(e.target.value)} />
                 {unit && <span className="unit">{unit}</span>}
             </span>

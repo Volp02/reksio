@@ -142,3 +142,4 @@ a.rsteps-r[aria-current="true"] .row-t { color: var(--accent-text); }
     .splan-skip { grid-column: 1 / -1; grid-row: 2; justify-self: start; margin-left: calc(3.4 * var(--fs-h2) + var(--s-4) - var(--s-2)); }
 }
 .sched-ed { scroll-margin-top: var(--s-5); }
+.field-e { margin: 0; color: var(--danger-text); font-size: var(--fs-small); }

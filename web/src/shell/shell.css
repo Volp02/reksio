@@ -91,3 +91,11 @@
     .bnav a[aria-current="page"] .bnav-i { background: var(--accent-soft); }
 }
 .ph-back { margin-left: calc(-1 * var(--s-2)); }
+
+/* Anmeldung (nur mit Passwort auf dem Server) */
+.login { min-height: 100dvh; display: grid; place-items: center; padding: var(--s-5); background: var(--page); }
+.login > .card, .login-f { width: min(100%, 24rem); }
+.login-h { display: flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-4); }
+.login-t { margin: 0; font-size: var(--fs-h2); font-weight: 600; }
+.login-e { margin: var(--s-2) 0 0; color: var(--danger-text); font-size: var(--fs-small); }
+.login .actions { margin-top: var(--s-4); }

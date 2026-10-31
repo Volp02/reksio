@@ -5,6 +5,7 @@ import { I18nProvider } from './i18n'
 import { StoreProvider } from './state/store'
 import { ThemeProvider } from './ui/theme'
 import { Shell, type Route } from './shell/Shell'
+import { AuthGate } from './shell/AuthGate'
 import { Overview } from './pages/Overview'
 import { MapPage } from './pages/MapPage'
 import { Runs } from './pages/Runs'
@@ -47,9 +48,11 @@ createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <ThemeProvider>
             <I18nProvider>
-                <StoreProvider>
-                    <App />
-                </StoreProvider>
+                <AuthGate>
+                    <StoreProvider>
+                        <App />
+                    </StoreProvider>
+                </AuthGate>
             </I18nProvider>
         </ThemeProvider>
     </StrictMode>,

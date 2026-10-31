@@ -8,6 +8,7 @@ import { setPrefs, usePrefs } from '../state/prefs'
 import { useTheme, type Density, type ThemePref } from '../ui/theme'
 import { Card, KV, Label, Segmented, Switch } from '../ui/ui'
 import { DiagnosticsCard } from './Diagnostics'
+import { AccessCard } from './AccessCard'
 import './pages.css'
 
 /** läuft in der Android-App (WebView mit eigener Kennung): dort lässt sich die Serveradresse ändern */
@@ -47,6 +48,8 @@ export function Settings() {
             <Card icon={<LayoutDashboard />} title={t.nav.overview}>
                 <Switch label={t.settings.showDiagnostics} checked={prefs.diagnostics} onChange={(v) => setPrefs({ diagnostics: v })} />
             </Card>
+
+            <AccessCard />
 
             <Card icon={<SlidersHorizontal />} title={t.settings.advanced}>
                 <ul className="rows">

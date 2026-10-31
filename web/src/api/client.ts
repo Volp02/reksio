@@ -4,6 +4,11 @@ import { CleaningCategory, type CleaningMode, type NavigationMode } from './type
 // Relativ, damit die App auch hinter einem Präfix (HA-Ingress) läuft
 export const API = new URL('api/', document.baseURI).pathname.replace(/\/$/, '')
 
+/** Ereignis am window, wenn der Server eine Anmeldung verlangt (Sitzung abgelaufen, Passwort geändert) */
+export const UNAUTHORIZED = 'reksio:unauthorized'
+
+export interface AuthState { enabled: boolean; authed: boolean }
+
 export class HttpError extends Error {
     constructor(public status: number, message: string) { super(message) }
 }
@@ -14,6 +19,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
         headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
     })
+    if (res.status === 401 && !path.startsWith('/auth')) window.dispatchEvent(new Event(UNAUTHORIZED))
     if (!res.ok) throw new HttpError(res.status, await res.text().catch(() => res.statusText))
     const text = await res.text()
     // manche Endpunkte antworten nur mit „OK“ statt JSON
@@ -25,6 +31,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 }
 
 // IDs (ISO-Zeitpunkte mit ':') unverändert senden: der Server dekodiert Pfade nicht
+export const auth = {
+    state: () => request<AuthState>('GET', '/auth'),
+    login: (password: string) => request<{ token: string }>('POST', '/auth/login', { password }),
+    logout: () => request('POST', '/auth/logout'),
+    /** leer = Schutz abschalten */
+    setPassword: (password: string) => request<{ enabled: boolean }>('PUT', '/auth/password', { password }),
+}
+
 export const api = {
     server: () => request<ServerInfo>('GET', '/server'),
     robots: () => request<Robots>('GET', '/robots'),
