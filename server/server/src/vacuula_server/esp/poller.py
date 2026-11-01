@@ -1,6 +1,8 @@
 """Read-only poller for the ESP32 bridge (OpenNeato) on a Gen3 robot's debug port.
 
-Every ESP_POLL_S: state, error, charger, analog (+ motors while cleaning) -> `telemetry`.
+Every ESP_POLL_S: state, error, charger, GetAnalogSensors, GetAccel (+ GetMotors while cleaning) -> `telemetry`.
+Analog, accel and motors are read raw via /api/serial and parsed here, so the ESP needs no parser of its own
+(its /api/motors misses Vacuum_mA and ROTATION_SPEED on the D7).
 Every ESP_POSE_POLL_S while cleaning: `GetRobotPos Smooth` -> `pose` (kept forever).
 Telemetry older than TELEMETRY_RETENTION_DAYS is thinned to one sample per TELEMETRY_THIN_S, never deleted.
 Every HISTORY_IMPORT_S when idle: missing poses of finished runs from the ESP's own history (history_import).
@@ -53,6 +55,45 @@ SENSOR_KEYS = {
     "RLDSBIT": "bumperRightLds",
 }
 
+# GetAnalogSensors (SensorName,Unit,Value) -> Schlüssel in telemetry.data["analog"], Faktor
+# Kompass, IMU und Magnetsensoren lässt der D7 auf 0, auch beim Reinigen
+ANALOG_KEYS = {
+    "BatteryVoltage": ("batteryVoltageV", 0.001),
+    "BatteryCurrent": ("batteryCurrentMA", 1),
+    "BatteryTemperature": ("batteryTemperatureC", 0.001),
+    "ExternalVoltage": ("externalVoltageV", 0.001),
+    "VacuumCurrent": ("vacuumMA", 1),
+    "SideBrushCurrent": ("sideBrushMA", 1),
+    "WallSensor": ("wallMM", 1),
+    "DropSensorLeft": ("dropLeftMM", 1),
+    "DropSensorRight": ("dropRightMM", 1),
+}
+
+# GetMotors -> Schlüssel in telemetry.data["motors"] (dieselben Namen wie /api/motors des ESP)
+MOTOR_KEYS = {
+    "Brush_RPM": "brushRPM", "Brush_mA": "brushMA",
+    "Vacuum_RPM": "vacuumRPM", "Vacuum_mA": "vacuumMA",
+    "LeftWheel_RPM": "leftWheelRPM", "LeftWheel_Load%": "leftWheelLoad",
+    "LeftWheel_PositionInMM": "leftWheelPositionMM", "LeftWheel_Speed": "leftWheelSpeed",
+    "RightWheel_RPM": "rightWheelRPM", "RightWheel_Load%": "rightWheelLoad",
+    "RightWheel_PositionInMM": "rightWheelPositionMM", "RightWheel_Speed": "rightWheelSpeed",
+    "SideBrush_mA": "sideBrushMA",
+}
+
+# GetAccel -> Schlüssel in telemetry.data["accel"]
+ACCEL_KEYS = {
+    "PitchInDegrees": "pitchDeg", "RollInDegrees": "rollDeg", "SumInG": "sumG",
+    "XInDPS": "gyroXDps", "YInDPS": "gyroYDps", "ZInDPS": "gyroZDps",
+}
+
+
+def to_num(v: str | None) -> int | float | None:
+    try:
+        f = float(v)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return int(f) if f.is_integer() else f
+
 
 def is_cleaning(state: dict | None) -> bool:
     # ST_F* = robot is out on a cleaning run (undocking, exploring, cleaning, recovering)
@@ -73,6 +114,31 @@ def parse_sensors(raw: str) -> dict | None:
     kv = parse_csv(raw)
     sensors = {key: kv[name] == "1" for name, key in SENSOR_KEYS.items() if name in kv}
     return sensors or None
+
+
+def parse_analog(raw: str) -> dict | None:
+    out: dict[str, int | float] = {}
+    for line in raw.replace("\r", "").split("\n")[1:]:
+        parts = [p.strip() for p in line.split(",")]
+        if len(parts) >= 3 and parts[0] in ANALOG_KEYS and (v := to_num(parts[2])) is not None:
+            key, factor = ANALOG_KEYS[parts[0]]
+            out[key] = round(v * factor, 3) if factor != 1 else v
+    return out or None
+
+
+def parse_motors(raw: str) -> dict | None:
+    kv = parse_csv(raw)
+    out = {key: v for name, key in MOTOR_KEYS.items() if (v := to_num(kv.get(name))) is not None}
+    # LIDAR-Drehzahl: der D7 meldet Umdrehungen pro Sekunde (im Stand bleibt der letzte Wert stehen)
+    if (hz := to_num(kv.get("ROTATION_SPEED"))) is not None:
+        out["laserRPM"] = round(hz * 60)
+    return out or None
+
+
+def parse_accel(raw: str) -> dict | None:
+    kv = parse_csv(raw)
+    out = {key: v for name, key in ACCEL_KEYS.items() if (v := to_num(kv.get(name))) is not None}
+    return out or None
 
 
 def parse_user_settings(raw: str) -> dict | None:
@@ -176,12 +242,16 @@ class EspPoller:
             return
         self.state = state
         raw_sensors = self._serial("GetDigitalSensors")
+        raw_analog = self._serial("GetAnalogSensors")
+        raw_accel = self._serial("GetAccel")
+        raw_motors = self._serial("GetMotors") if is_cleaning(state) else None
         data = {
             "state": state,
             "error": self._get("/api/error"),
             "charger": self._get("/api/charger"),
-            "analog": self._get("/api/analog"),
-            "motors": self._get("/api/motors") if is_cleaning(state) else None,
+            "analog": parse_analog(raw_analog) if raw_analog else None,
+            "accel": parse_accel(raw_accel) if raw_accel else None,
+            "motors": parse_motors(raw_motors) if raw_motors else None,
             "sensors": parse_sensors(raw_sensors) if raw_sensors else None,
         }
         # selten: nur in diesen Proben gesetzt, /telemetry/latest füllt sie aus älteren auf

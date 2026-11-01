@@ -9,7 +9,7 @@ from vacuula_server.db import Base
 
 
 class Telemetry(Base):
-    """One ESP sample: raw JSON of /api/state, /api/error, /api/charger, /api/analog, /api/motors."""
+    """One ESP sample: /api/state, /api/error, /api/charger and parsed serial responses (analog, accel, motors, sensors, …)."""
     __tablename__ = "telemetry"
     __table_args__ = (Index("ix_telemetry_robot_ts", "robot", "ts"),)
 
