@@ -533,7 +533,7 @@ bool parseMotorData(const String& raw, MotorData& out) {
         out.brushMaxPWM = val.toInt();
     if (findCsvValue(raw, "Vacuum_RPM", val))
         out.vacuumRPM = val.toInt();
-    if (findCsvValue(raw, "Vacuum_CurrentInMA", val))
+    if (findCsvValue(raw, "Vacuum_CurrentInMA", val) || findCsvValue(raw, "Vacuum_mA", val)) // D3-D7: Vacuum_mA
         out.vacuumMA = val.toInt();
     if (findCsvValue(raw, "LeftWheel_RPM", val))
         out.leftWheelRPM = val.toInt();
@@ -555,6 +555,8 @@ bool parseMotorData(const String& raw, MotorData& out) {
         out.sideBrushMA = val.toInt();
     if (findCsvValue(raw, "Laser_RPM", val))
         out.laserRPM = val.toInt();
+    else if (findCsvValue(raw, "ROTATION_SPEED", val)) // D3-D7: LDS revolutions per second
+        out.laserRPM = static_cast<int>(lroundf(val.toFloat() * 60.0f));
     return found;
 }
 

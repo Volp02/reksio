@@ -290,6 +290,16 @@ Robot GND -> ESP GND. The robot provides 3.3V to power the ESP.
 - D3-D7 support varies by firmware version
 - **No WiFi control commands** — robot WiFi is managed internally, no serial access
 
+**D7 firmware 4.5.3 (checked docked and during a spot clean):**
+- Empty or unsupported in both states: `GetDatabase` (all tables), `GetSysLog` ("Illegal"), `GetStats`,
+  `GetTime` (stuck at `Sunday 0:00:00`), `GetSchedule` and `GetLifeStatLog` ("Unknown Cmd")
+- `GetWarranty` `CumulativeBatteryCycles` stays `0000`
+- `GetAnalogSensors`: compass, `IMUAccelerometer*` stay 0; `MagSensorLeft/Right` read mV docked, 0 while driving
+- `GetMotors` labels differ from XV: `Vacuum_mA` (not `Vacuum_CurrentInMA`), `ROTATION_SPEED` in rev/s
+  (not `Laser_RPM`, keeps its last value when the LIDAR stops), no `Brush_MaxPWM`, extra `*_direction`
+- `GetDigitalSensors` `SNSR_DC_JACK_IS_IN` is always 0 (charges via dock contacts, use `ExtPwrPresent`)
+- `GetLDSScan` returns all zeros while docked (LIDAR only spins when cleaning or in TestMode)
+
 ## Response Formats
 
 **GetUserSettings** — CSV: `Label, Value` (note space after comma)
