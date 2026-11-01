@@ -19,6 +19,7 @@ import android.view.inputmethod.EditorInfo
 import android.webkit.CookieManager
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
@@ -30,9 +31,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Zeigt die Reksio-Weboberfläche des Servers und startet den Wächter. Ohne gespeicherte Adresse oder wenn der Server
- * nicht antwortet, kommt die Einrichtung: Server im Netz suchen (mDNS, `_vacuula._tcp`) oder Adresse eingeben.
- * Die Web-App öffnet die Einrichtung über den Link `reksio-app://setup` (Einstellungen, nur in der App sichtbar).
+ * Zeigt die Reksio-Weboberfläche und startet den Wächter. Die Oberfläche kommt aus der App ([Oberflaeche]), die Daten
+ * vom Server. Ohne gespeicherte Adresse kommt die Einrichtung: Server im Netz suchen (mDNS, `_vacuula._tcp`) oder
+ * Adresse eingeben. Die Web-App öffnet sie über den Link `reksio-app://setup` (Einstellungen und „Server nicht
+ * erreichbar“, nur in der App sichtbar).
  */
 class MainActivity : Activity() {
     private lateinit var web: WebView
@@ -63,6 +65,9 @@ class MainActivity : Activity() {
                 startActivity(Intent(Intent.ACTION_VIEW, request.url))
                 return true
             }
+
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+                Oberflaeche.antwort(assets, Server.adresse(this@MainActivity), request.url)
 
             override fun onPageFinished(view: WebView, url: String) {
                 // Anmeldung für den Wächter sichern; nach einer Anmeldung neu verbinden

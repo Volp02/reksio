@@ -50,12 +50,25 @@ android {
 
     buildFeatures { buildConfig = true }
 
+    // Weboberfläche aus web/dist (vorher bauen: cd web && npm ci && npm run build), siehe Oberflaeche.kt
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/weboberflaeche"))
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
 }
+
+val weboberflaeche by tasks.registering(Copy::class) {
+    val dist = rootProject.file("../web/dist")
+    doFirst {
+        check(dist.resolve("index.html").isFile) { "web/dist fehlt: zuerst die Web-App bauen (cd web && npm ci && npm run build)" }
+    }
+    from(dist)
+    into(layout.buildDirectory.dir("generated/weboberflaeche/web"))
+}
+tasks.named("preBuild") { dependsOn(weboberflaeche) }
 
 dependencies {
     testImplementation("junit:junit:4.13.2")

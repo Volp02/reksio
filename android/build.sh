@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Baut die Reksio-App (Tests + APK) nach dist/reksio.apk.
-# Werkzeuge: JDK 17 + Android-SDK (JAVA_HOME/ANDROID_HOME, Standard ~/opt/...).
+# Baut die Reksio-App (Web-App, Tests, APK) nach dist/reksio.apk.
+# Werkzeuge: Node 22, JDK 17 + Android-SDK (JAVA_HOME/ANDROID_HOME, Standard ~/opt/...).
 # Heimnetz-Adressen in local.properties (siehe app/build.gradle.kts).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -16,6 +16,8 @@ if [ ! -f reksio.keystore ]; then
     printf 'reksio.keystore=reksio.keystore\nreksio.keystorePassword=%s\n' "$pw" >> local.properties
     chmod 600 local.properties
 fi
+# die Oberfläche steckt in der APK (Oberflaeche.kt)
+(cd ../web && npm ci --silent && VITE_REKSIO_VERSION="${REKSIO_VERSIONNAME:-}" npm run build >/dev/null)
 PATH="$JAVA_HOME/bin:$PATH" ./gradlew --no-daemon -q testReleaseUnitTest assembleRelease
 mkdir -p dist
 cp app/build/outputs/apk/release/app-release.apk dist/reksio.apk
