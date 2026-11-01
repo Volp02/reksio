@@ -133,6 +133,12 @@ const de = {
         recharges: 'Ladestopps',
         path: 'Gefahrene Strecke',
         errors: 'Störungen',
+        pickedUp: 'Hochgehoben',
+        lost: 'Position verloren',
+        inError: 'In Störung',
+        paused: 'Pausiert',
+        yes: 'Ja',
+        no: 'Nein',
     },
     auth: {
         password: 'Passwort',

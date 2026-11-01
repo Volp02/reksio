@@ -136,6 +136,12 @@ const en: Shape<Dict> = {
         recharges: 'Recharges',
         path: 'Path driven',
         errors: 'Incidents',
+        pickedUp: 'Picked up',
+        lost: 'Lost position',
+        inError: 'In error',
+        paused: 'Paused',
+        yes: 'Yes',
+        no: 'No',
     },
     auth: {
         password: 'Password',

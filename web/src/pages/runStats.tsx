@@ -22,6 +22,22 @@ export function runStatsShort(locale: string, s: EspSession | undefined, r?: Run
     return `${fmtNumber(locale, m.areaCovered)} m² · ${fmtDuration(m.duration)}`
 }
 
+/** Bericht des Roboters (eine Fahrt oder mehrere zusammengezählt): Hochheben, Positionsverlust, Störung, Pause, Ladestopps */
+export function robotReportRows(t: Dict, locale: string, runs: (RunSummary | undefined)[], recharges = true): [string, ReactNode][] {
+    const rs = runs.map((r) => r?.run).filter((r) => r?.picked_up_count !== undefined)
+    if (!rs.length) return []
+    const sum = (k: 'picked_up_count' | 'time_in_error' | 'time_in_pause' | 'suspended_cleaning_charging_count' | 'time_in_suspended_cleaning') =>
+        rs.reduce((n, r) => n + (r?.[k] ?? 0), 0)
+    const charges = sum('suspended_cleaning_charging_count'), chargeTime = sum('time_in_suspended_cleaning')
+    return [
+        [t.runs.pickedUp, `${fmtNumber(locale, sum('picked_up_count'))}×`],
+        [t.runs.lost, rs.some((r) => r?.localization_lost || r?.teleported) ? t.runs.yes : t.runs.no],
+        [t.runs.inError, fmtDuration(sum('time_in_error'))],
+        [t.runs.paused, fmtDuration(sum('time_in_pause'))],
+        ...(recharges ? [[t.runs.recharges, charges ? `${fmtNumber(locale, charges)} · ${fmtDuration(chargeTime)}` : '0'] as [string, ReactNode]] : []),
+    ]
+}
+
 /** Schlüssel-Wert-Zeilen für das Detail einer Reinigung */
 export function runStatsRows(t: Dict, locale: string, s: EspSession | undefined, r?: RunSummary): [string, ReactNode][] {
     const m = s?.summary
@@ -34,6 +50,7 @@ export function runStatsRows(t: Dict, locale: string, s: EspSession | undefined,
             ...(f.batteryStart !== undefined && f.batteryEnd !== undefined
                 ? [[t.runs.battery, <Value key="b" value={`${fmtNumber(locale, f.batteryStart)} → ${fmtNumber(locale, f.batteryEnd)}`} unit="%" />] as [string, ReactNode]]
                 : []),
+            ...robotReportRows(t, locale, [r]),
         ]
     }
     return [
@@ -43,5 +60,6 @@ export function runStatsRows(t: Dict, locale: string, s: EspSession | undefined,
         [t.runs.battery, <Value key="b" value={`${fmtNumber(locale, m.batteryStart)} → ${fmtNumber(locale, m.batteryEnd)}`} unit="%" />],
         [t.runs.recharges, fmtNumber(locale, m.recharges)],
         [t.runs.errors, fmtNumber(locale, m.errorsDuringClean)],
+        ...robotReportRows(t, locale, [r], false),
     ]
 }

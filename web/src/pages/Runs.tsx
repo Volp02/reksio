@@ -4,7 +4,7 @@ import type { Job, MapData, Pose, RunSummary } from '../api/types'
 import { fill, useI18n } from '../i18n'
 import { useStore } from '../state/store'
 import { sessionFor, useBoundaries, useEspSessions, useIncidents, useJobs, useMapData, useMaps, useRunData, useRunPath, useRuns } from '../state/data'
-import { runStatsRows, runStatsShort } from './runStats'
+import { robotReportRows, runStatsRows, runStatsShort } from './runStats'
 import { historyEntries, IncidentList, jobEnd, runArea, ZoneSteps, type Entry } from './runHistory'
 import { fmtDuration, fmtNumber, fmtWhen, idToTs } from '../format'
 import { MapView } from '../map/MapView'
@@ -152,6 +152,7 @@ function JobDetail({ job, runs, title }: { job: Job; runs: RunSummary[]; title: 
         [t.runs.duration, fmtDuration(end - job.started)],
         [t.runs.area, <Value key="a" value={fmtNumber(locale, area, 1)} unit="m²" />],
         [t.history.zonesDone, fill(t.history.ofN, { i: done, n: job.zones.length })],
+        ...robotReportRows(t, locale, runs),
     ]
     return (
         <Card className="runs-detail" title={title} icon={<BackLink />}>

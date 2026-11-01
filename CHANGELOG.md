@@ -11,6 +11,8 @@ Erstes Release mit fertigem Server-Image, App und ESP-Firmware.
   der Karte (ein-/ausblendbar), ältere Fahrten aus dem ESP-Verlauf nachgetragen.
 - **Zonen**: Sicherung bei jedem Speichern mit Wiederherstellen, „zuletzt gereinigt“ pro Zone, Speichern übernimmt den
   aktuellen Stand des Roboters (kein Überschreiben mehr nach Neustarts).
+- **Fahrtbericht des Roboters im Verlauf**: Hochgehoben, Position verloren, Zeit in Störung und Pause, Ladestopps
+  (bei Zonenfolgen zusammengezählt).
 - **Einrasten beim Zeichnen**: Eckpunkte liegen immer auf dem Kartenraster (zwischen den Punkten) und richten sich an den
   Kanten anderer Zonen aus (gepunktete Hilfslinie); Alt platziert frei.
 - **App-Download im Web**: Einstellungen → Android-App; im Android-Browser einmalig ein schließbarer Hinweis. Die APK

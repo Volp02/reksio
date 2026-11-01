@@ -153,6 +153,10 @@ export interface PersistentMap {
 export interface RunInfo {
     status?: string; error?: string | null; launched_from?: string; category?: number
     start_at?: string; end_at?: string; cleaned_area?: number; run_charge_at_start?: number; run_charge_at_end?: number
+    // Bericht des Roboters zur Fahrt; Zeiten in Sekunden
+    picked_up_count?: number; localization_lost?: boolean; teleported?: boolean
+    time_in_error?: number; time_in_pause?: number
+    suspended_cleaning_charging_count?: number; time_in_suspended_cleaning?: number
 }
 export interface RunSummary { id: string; persistent_map: string | null; run?: RunInfo }
 
