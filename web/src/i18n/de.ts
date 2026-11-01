@@ -118,7 +118,8 @@ const de = {
         front: 'vorn',
         zones: 'Zonen',
         live: 'Live',
-        lidar: 'LIDAR live',
+        lidar: 'LIDAR live · experimentell',
+        experimental: 'Experimentell',
         mapList: 'Karten',
     },
     runs: {

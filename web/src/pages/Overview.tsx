@@ -18,7 +18,7 @@ import { Button, Card, Confirm, Empty, IconButton, KV, Label, Pill, Toast, Value
 import { getPrefs, setPrefs, usePrefs } from '../state/prefs'
 import { DiagnosticsCard } from './Diagnostics'
 import { CleanModes } from './CleanModes'
-import { LidarToggle } from '../map/LidarToggle'
+import { LidarTag, LidarToggle } from '../map/LidarToggle'
 import './overview.css'
 
 export function Overview() {
@@ -186,7 +186,8 @@ function MapCard() {
                 <a href="#/map" className="btn btn--ghost btn--s"><Label>{t.nav.map}</Label></a>
             </>}>
             {data.data
-                ? <MapView data={data.data} boundaries={zones} live={live} label={active?.name || t.map.floor} />
+                ? <MapView data={data.data} boundaries={zones} live={live} label={active?.name || t.map.floor}
+                    tools={<LidarTag live={live} />} />
                 : <Empty icon={<MapIcon />} label={data.loading || maps.loading ? t.common.loading : t.map.noMap} />}
             <Legend boundaries={zones} noGo={t.map.noGo} />
         </Card>

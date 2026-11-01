@@ -23,9 +23,10 @@ Erstes Release mit fertigem Server-Image, App und ESP-Firmware.
 - **Karte folgt beim Ziehen während der Fahrt**: schnelles Ziehen, während Reksio fährt, hat die Karte bis zum
   Loslassen eingefroren (die Gleit-Animation hat jede Zeichnung wieder abgemeldet). Reingezoomt besteht die Karte
   außerdem aus Kacheln, die nach und nach entstehen (höchstens 6 ms pro Bild).
-- **LIDAR live**: Knopf auf der Live-Karte (Übersicht und Karte, nur während Reksio fährt) zeigt den aktuellen
+- **LIDAR live (experimentell)**: Knopf auf der Live-Karte (Übersicht und Karte, nur während Reksio fährt) zeigt den aktuellen
   LIDAR-Scan als Punkte um Reksio. Der ESP liest Scans nur, solange jemand zusieht (Anfrage gilt 15 s, die App erneuert
-  sie alle 5 s bei sichtbarer Seite); nichts wird gespeichert, nach jedem Laden ist der Knopf aus.
+  sie alle 5 s bei sichtbarer Seite); nichts wird gespeichert, nach jedem Laden ist der Knopf aus. Solange er an
+  ist, steht „Experimentell“ auf der Karte.
 - **Mehr Telemetrie vom ESP**: Saug- und Seitenbürstenstrom, Wand- und Bodensensoren (mm), Neigung und Drehrate,
   LIDAR-Drehzahl. Der Server liest dafür die rohen Serial-Antworten und wertet sie selbst aus; die ESP-Firmware erkennt
   `Vacuum_mA` und `ROTATION_SPEED` des D7 jetzt ebenfalls.

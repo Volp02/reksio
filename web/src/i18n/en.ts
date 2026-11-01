@@ -121,7 +121,8 @@ const en: Shape<Dict> = {
         front: 'front',
         zones: 'Zones',
         live: 'Live',
-        lidar: 'Live LIDAR',
+        lidar: 'Live LIDAR · experimental',
+        experimental: 'Experimental',
         mapList: 'Maps',
     },
     runs: {
