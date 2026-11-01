@@ -6,7 +6,7 @@ import { espProblem, robotStatus } from '../status'
 import { fmtTime } from '../format'
 import { useTheme } from '../ui/theme'
 import { IconButton, Label, Pill, Toast } from '../ui/ui'
-import { APK_URL } from '../api/client'
+import { apkUrl, newer, UI_VERSION } from '../api/client'
 import { IN_APP } from '../pages/Settings'
 import './shell.css'
 
@@ -20,18 +20,22 @@ const APP_HINT_KEY = 'reksio.appHint'
 // Hinweis auf die App: nur Android-Browser (nicht in der App selbst), einmal pro Browser
 const ANDROID_BROWSER = /Android/i.test(navigator.userAgent) && !IN_APP
 
-/** einmaliger Hinweis am Android-Handy: App herunterladen */
+/** am Android-Handy einmal: App herunterladen; in der App: neuere Version zum Server (einmal pro Version) */
 function AppHint() {
     const { t } = useI18n()
     const store = useStore()
-    const [hidden, setHidden] = useState(() => localStorage.getItem(APP_HINT_KEY) === '1')
-    if (hidden || !ANDROID_BROWSER || !store.server?.android_app) return null
-    const close = () => { localStorage.setItem(APP_HINT_KEY, '1'); setHidden(true) }
+    const latest = store.server?.reksio_version
+    const update = IN_APP && !!latest && !!UI_VERSION && newer(latest, UI_VERSION)
+    const key = update ? `update:${latest}` : '1'
+    const [closed, setClosed] = useState(() => localStorage.getItem(APP_HINT_KEY))
+    if (closed === key || !(update || (ANDROID_BROWSER && store.server))) return null
+    const close = () => { localStorage.setItem(APP_HINT_KEY, key); setClosed(key) }
+    const title = update ? fill(t.app.update, { version: latest }) : t.app.title
     return (
         <div className="apphint" role="status">
             <Smartphone className="apphint-i" />
-            <Label className="apphint-t">{t.app.title}</Label>
-            <a className="btn btn--primary btn--s" href={APK_URL} download onClick={close} aria-label={t.app.download} title={t.app.download}><Download /><Label>{t.app.download}</Label></a>
+            <Label className="apphint-t">{title}</Label>
+            <a className="btn btn--primary btn--s" href={apkUrl(store.server)} onClick={close} aria-label={t.app.download} title={t.app.download}><Download /><Label>{t.app.download}</Label></a>
             <IconButton size="s" icon={<X />} label={t.app.close} onClick={close} />
         </div>
     )

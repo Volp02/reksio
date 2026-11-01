@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { BatteryMedium, Bot, ChevronRight, Cpu, Download, LayoutDashboard, Palette, Server, SlidersHorizontal, Smartphone } from 'lucide-react'
-import { APK_URL, gen3 } from '../api/client'
+import { apkUrl, gen3, UI_VERSION } from '../api/client'
 import type { GeneralInfo } from '../api/types'
 import { useI18n, type Lang } from '../i18n'
 import { useStore } from '../state/store'
@@ -60,14 +60,16 @@ export function Settings() {
                 </ul>
             </Card>
 
-            {!IN_APP && s.server?.android_app && (
+            {!IN_APP && s.server && (
                 <Card icon={<Smartphone />} title={t.app.title}>
                     <ul className="rows">
-                        <li><a className="row" href={APK_URL} download>
+                        <li><a className="row" href={apkUrl(s.server)}>
                             <Download className="row-i" />
                             <span className="row-main">
                                 <Label className="row-t">{t.app.download}</Label>
-                                <Label className="row-s">{[s.server.android_app.version, `${fmtNumber(locale, s.server.android_app.size / 1e6, 1)} MB`].filter(Boolean).join(' · ')}</Label>
+                                <Label className="row-s">{s.server.android_app
+                                    ? [s.server.android_app.version, `${fmtNumber(locale, s.server.android_app.size / 1e6, 1)} MB`].filter(Boolean).join(' · ')
+                                    : s.server.reksio_version ?? 'GitHub'}</Label>
                             </span>
                         </a></li>
                     </ul>
@@ -87,7 +89,8 @@ export function Settings() {
 
             <Card icon={<Server />} title={t.settings.server}>
                 <KV rows={[
-                    [t.settings.version, <span key="v" className="mono">{s.server?.version ?? none}</span>],
+                    [t.settings.version, <span key="v" className="mono">{s.server?.reksio_version ?? s.server?.version ?? none}</span>],
+                    ...(IN_APP ? [[t.app.title, <span key="a" className="mono">{UI_VERSION || none}</span>] as [string, ReactNode]] : []),
                     [t.settings.timezone, s.server?.timezone ?? none],
                 ]} />
             </Card>

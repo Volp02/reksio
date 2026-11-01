@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Bot } from 'lucide-react'
 import { auth, HttpError, UNAUTHORIZED } from '../api/client'
 import { useI18n } from '../i18n'
-import { Button, Card, Empty, InputRow } from '../ui/ui'
+import { Button, Card, Empty, InputRow, Label } from '../ui/ui'
+import { IN_APP } from '../pages/Settings'
 import './shell.css'
 
 /** Zeigt die App erst nach der Anmeldung, wenn auf dem Server ein Passwort gesetzt ist */
@@ -25,7 +26,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return (
         <div className="login">
             <Card><Empty label={state === 'checking' ? t.common.loading : t.common.offline}
-                action={state === 'offline' ? <Button size="s" label={t.common.retry} onClick={check} /> : undefined} /></Card>
+                action={state === 'offline' ? <>
+                    <Button size="s" label={t.common.retry} onClick={check} />
+                    {IN_APP && <a className="btn btn--default btn--s" href="reksio-app://setup"><Label>{t.settings.appServer}</Label></a>}
+                </> : undefined} /></Card>
         </div>
     )
 }

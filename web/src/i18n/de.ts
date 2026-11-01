@@ -489,6 +489,7 @@ const de = {
     app: {
         title: 'Android-App',
         download: 'Herunterladen',
+        update: 'App-Update {version}',
         close: 'Schließen',
     },
     maint: {

@@ -6,6 +6,8 @@ export interface ServerInfo {
     utc_offset_minutes: number
     /** APK in data/app des Servers, sonst null */
     android_app?: { version: string | null; size: number } | null
+    /** Reksio-Version des Images (Release-Tag), null bei eigenen Builds */
+    reksio_version?: string | null
 }
 
 export interface RobotSummary {

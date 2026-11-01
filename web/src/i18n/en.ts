@@ -492,6 +492,7 @@ const en: Shape<Dict> = {
     app: {
         title: 'Android app',
         download: 'Download',
+        update: 'App update {version}',
         close: 'Close',
     },
     maint: {

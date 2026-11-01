@@ -9,8 +9,27 @@ export const UNAUTHORIZED = 'reksio:unauthorized'
 
 export interface AuthState { enabled: boolean; authed: boolean }
 
-/** Download der Android-App (GET /api/app/reksio.apk) */
-export const APK_URL = `${API}/app/reksio.apk`
+/** Reksio-Version dieser Oberfläche (beim Bau aus dem Release-Tag), leer bei eigenen Builds */
+export const UI_VERSION: string = import.meta.env.VITE_REKSIO_VERSION ?? ''
+
+const RELEASES = 'https://github.com/Volp02/reksio/releases'
+
+/** Android-App: vom Server, wenn dort eine liegt (data/app), sonst aus dem GitHub-Release zur Version des Servers */
+export function apkUrl(server?: ServerInfo): string {
+    if (server?.android_app) return `${API}/app/reksio.apk`
+    const v = server?.reksio_version
+    return v ? `${RELEASES}/download/v${v}/reksio.apk` : `${RELEASES}/latest/download/reksio.apk`
+}
+
+/** a > b nach Versionsnummer (0.3.0 > 0.2.1, 0.3.0 > 0.3.0-rc1) */
+export function newer(a: string, b: string): boolean {
+    const parts = (v: string) => v.split('-')[0].split('.').map((n) => parseInt(n) || 0)
+    const [x, y] = [parts(a), parts(b)]
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+        if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0)
+    }
+    return !a.includes('-') && b.includes('-')
+}
 
 export class HttpError extends Error {
     constructor(public status: number, message: string) { super(message) }
