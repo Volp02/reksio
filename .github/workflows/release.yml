@@ -31,6 +31,8 @@ jobs:
             type=semver,pattern={{version}}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
       - uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -115,8 +117,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # nur APK und Firmware (build-push-action legt außerdem einen Build-Bericht ab, der sich nicht laden lässt)
       - uses: actions/download-artifact@v4
         with:
+          pattern: "{apk,firmware}"
           path: out
           merge-multiple: true
       - name: GitHub-Release
