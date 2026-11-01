@@ -1,4 +1,4 @@
-import { drawDots, type Colors, type Grid } from './render'
+import { rasterDots, type Colors, type Grid } from './render'
 
 const TILE_PX = 512 // Kachelgröße in Gerätepixeln
 const MAX_TILES = 64 // ≈ 64 MB; älteste fliegen zuerst raus
@@ -64,12 +64,12 @@ export class DotTiles {
         const grid = this.grid!, scale = this.scale
         const canvas = document.createElement('canvas')
         canvas.width = canvas.height = TILE_PX
-        const g = canvas.getContext('2d')!
-        g.scale(this.dpr, this.dpr)
+        const dpr = this.dpr
         // eine Zelle Rand: Punkte der Nachbarzellen ragen hinein (Wände sind größer als ihre Zelle)
-        drawDots(g, grid, this.colors!, scale, -cx * scale, -cy * scale,
+        canvas.getContext('2d')!.putImageData(rasterDots(TILE_PX, TILE_PX, grid, this.colors!, scale, dpr,
+            -cx * scale * dpr, -cy * scale * dpr,
             Math.max(0, Math.floor(cx) - 1), Math.max(0, Math.floor(cy) - 1),
-            Math.min(grid.width, Math.ceil(cx + cells) + 1), Math.min(grid.height, Math.ceil(cy + cells) + 1))
+            Math.min(grid.width, Math.ceil(cx + cells) + 1), Math.min(grid.height, Math.ceil(cy + cells) + 1)), 0, 0)
         return canvas
     }
 }

@@ -82,46 +82,117 @@ export function toGrid(floor: MapData, run?: MapData): Grid {
     return { width: w, height: h, floor: f, run: r, bounds }
 }
 
-/**
- * Punkte der Zellen x0..x1, y0..y1 zeichnen. `scale` = Pixel pro Zelle, (ox, oy) = Ursprung.
- * Je Farbe ein Pfad und ein fill(), damit auch große Karten schnell gehen.
- */
-export function drawDots(g: CanvasRenderingContext2D, grid: Grid, c: Colors, scale: number, ox: number, oy: number,
-    x0 = 0, y0 = 0, x1 = grid.width, y1 = grid.height) {
-    const floor = new Path2D(), wall = new Path2D(), run = new Path2D()
-    // Boden und Spur behalten ihre relative Größe (gleiche Helligkeit in jeder Stufe), Wände bekommen eine Mindestgröße
-    const size = (k: keyof typeof DOT) => Math.max(DOT[k] * scale, MIN_PX[k])
-    const df = size('floor'), dw = size('wall'), dr = size('run')
-    // sehr klein: Quadrate statt Kreise (Kreise unter ~2 px werden nur unscharf)
-    const square = scale <= 2
-    const add = (p: Path2D, cx: number, cy: number, d: number) => {
-        if (square) p.rect(cx - d / 2, cy - d / 2, d, d)
-        else { p.moveTo(cx + d / 2, cy); p.arc(cx, cy, d / 2, 0, Math.PI * 2) }
+/** CSS-Farbe → [r, g, b, a] (0–255) */
+const rgbaCache = new Map<string, Uint8ClampedArray>()
+function rgba(color: string): Uint8ClampedArray {
+    let v = rgbaCache.get(color)
+    if (!v) {
+        const g = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!
+        g.fillStyle = color
+        g.fillRect(0, 0, 1, 1)
+        v = g.getImageData(0, 0, 1, 1).data
+        rgbaCache.set(color, v)
     }
-    const w = grid.width
-    for (let y = y0; y < y1; y++) {
-        const cy = oy + (y + 0.5) * scale
-        const row = y * w
-        for (let x = x0; x < x1; x++) {
-            const i = row + x
-            const v = grid.floor[i]
-            const cx = ox + (x + 0.5) * scale
-            // klein: Boden flächig in Mischfarbe (wirkt so hell wie die Punkte beim Reinzoomen)
-            if (v === 1) add(floor, cx, cy, square ? scale : df)
-            else if (v === 2) add(wall, cx, cy, dw)
-            if (grid.run?.[i]) add(run, cx, cy, dr)
+    return v
+}
+
+/** Deckung eines Punkts (Kreis oder Quadrat mit Durchmesser d) um (fx, fy) in einem Pixelfenster ab (x, y) */
+interface Mask { x: number; y: number; w: number; h: number; a: Float32Array }
+const SUB = 8 // Punktmitte auf 1/8 Pixel gerundet: gleiche Masken für viele Punkte
+const SS = 4 // Kreise: 4×4 Stichproben pro Pixel
+const masks = new Map<string, Mask>()
+function mask(square: boolean, d: number, fx: number, fy: number): Mask {
+    const key = `${square ? 's' : 'c'}${d}:${fx}:${fy}`
+    let m = masks.get(key)
+    if (m) return m
+    const r = d / 2
+    const x = Math.floor(fx - r), y = Math.floor(fy - r)
+    const w = Math.ceil(fx + r) - x, h = Math.ceil(fy + r) - y
+    const a = new Float32Array(w * h)
+    for (let j = 0; j < h; j++) {
+        for (let i = 0; i < w; i++) {
+            const px = x + i, py = y + j
+            if (square) {
+                a[j * w + i] = Math.max(0, Math.min(px + 1, fx + r) - Math.max(px, fx - r))
+                    * Math.max(0, Math.min(py + 1, fy + r) - Math.max(py, fy - r))
+            } else {
+                let n = 0
+                for (let sy = 0; sy < SS; sy++) {
+                    const dy = py + (sy + 0.5) / SS - fy
+                    for (let sx = 0; sx < SS; sx++) {
+                        const dx = px + (sx + 0.5) / SS - fx
+                        if (dx * dx + dy * dy <= r * r) n++
+                    }
+                }
+                a[j * w + i] = n / (SS * SS)
+            }
         }
     }
-    g.fillStyle = square ? c.floorFlat : c.floor
-    g.fill(floor)
-    g.fillStyle = c.wall
-    g.fill(wall)
-    if (grid.run) {
-        g.globalAlpha = RUN_ALPHA
-        g.fillStyle = c.path
-        g.fill(run)
-        g.globalAlpha = 1
+    m = { x, y, w, h, a }
+    if (masks.size > 4096) masks.clear()
+    masks.set(key, m)
+    return m
+}
+
+/**
+ * Punkte der Zellen x0..x1, y0..y1 direkt in Pixel rechnen (Pfade mit zehntausenden Kreisen braucht der Browser ohne
+ * GPU sekundenlang). `scale` = Einheiten pro Zelle, `unit` = Gerätepixel pro Einheit, (ox, oy) = Ursprung in
+ * Gerätepixeln. Je Farbe eine Deckungsebene (Überlappungen wie bei einem gemeinsamen Pfad), dann darübergelegt.
+ */
+export function rasterDots(width: number, height: number, grid: Grid, c: Colors, scale: number, unit: number,
+    ox: number, oy: number, x0 = 0, y0 = 0, x1 = grid.width, y1 = grid.height): ImageData {
+    const img = new ImageData(width, height)
+    const cover = new Float32Array(width * height)
+    const s = scale * unit
+    // Boden und Spur behalten ihre relative Größe (gleiche Helligkeit in jeder Stufe), Wände bekommen eine Mindestgröße
+    const size = (k: keyof typeof DOT) => Math.max(DOT[k] * s, MIN_PX[k] * unit)
+    // sehr klein: Quadrate statt Kreise (Kreise unter ~2 px werden nur unscharf), Boden flächig in Mischfarbe
+    const square = scale <= 2
+    const layers: [(i: number) => boolean, number, string, number][] = [
+        [(i) => grid.floor[i] === 1, square ? s : size('floor'), square ? c.floorFlat : c.floor, 1],
+        [(i) => grid.floor[i] === 2, size('wall'), c.wall, 1],
+    ]
+    if (grid.run) layers.push([(i) => !!grid.run![i], size('run'), c.path, RUN_ALPHA])
+    const w = grid.width
+    for (const [hit, d, color, alpha] of layers) {
+        cover.fill(0)
+        let any = false
+        for (let y = y0; y < y1; y++) {
+            const cy = oy + (y + 0.5) * s
+            const iy = Math.floor(cy), fy = Math.round((cy - iy) * SUB) / SUB
+            for (let x = x0; x < x1; x++) {
+                if (!hit(y * w + x)) continue
+                any = true
+                const cx = ox + (x + 0.5) * s
+                const ix = Math.floor(cx), fx = Math.round((cx - ix) * SUB) / SUB
+                const m = mask(square, d, fx, fy)
+                for (let j = 0; j < m.h; j++) {
+                    const py = iy + m.y + j
+                    if (py < 0 || py >= height) continue
+                    for (let i = 0; i < m.w; i++) {
+                        const px = ix + m.x + i
+                        if (px < 0 || px >= width) continue
+                        const k = py * width + px, v = m.a[j * m.w + i]
+                        if (v > cover[k]) cover[k] = v
+                    }
+                }
+            }
+        }
+        if (!any) continue
+        // darüberlegen (source-over, nicht vormultipliziert)
+        const [r, g, b, ca] = rgba(color)
+        const px = img.data
+        for (let k = 0; k < cover.length; k++) {
+            const a = cover[k] * alpha * (ca / 255)
+            if (a <= 0) continue
+            const o = k * 4, da = px[o + 3] / 255, rest = da * (1 - a), oa = a + rest
+            px[o] = (r * a + px[o] * rest) / oa
+            px[o + 1] = (g * a + px[o + 1] * rest) / oa
+            px[o + 2] = (b * a + px[o + 2] * rest) / oa
+            px[o + 3] = oa * 255
+        }
     }
+    return img
 }
 
 /** Ganze Karte einmal in `level` Pixel pro Zelle vorrendern (für Übersicht und Rauszoomen) */
@@ -129,7 +200,7 @@ export function renderBitmap(grid: Grid, c: Colors, level: number): HTMLCanvasEl
     const canvas = document.createElement('canvas')
     canvas.width = grid.width * level
     canvas.height = grid.height * level
-    drawDots(canvas.getContext('2d')!, grid, c, level, 0, 0)
+    canvas.getContext('2d')!.putImageData(rasterDots(canvas.width, canvas.height, grid, c, level, 1, 0, 0), 0, 0)
     return canvas
 }
 
