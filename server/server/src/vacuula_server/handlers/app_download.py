@@ -1,4 +1,4 @@
-"""Android-App zum Herunterladen: neueste reksio*.apk aus data/app (dort ablegen, z. B. reksio-0.2.0.apk)."""
+"""Android-App zum Herunterladen, falls der Server kein Internet hat: neueste reksio*.apk aus data/app (z. B. reksio-0.2.0.apk). Sonst verlinkt die Web-App das GitHub-Release."""
 from __future__ import annotations
 
 import re

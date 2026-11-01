@@ -81,6 +81,8 @@ ESP_POSE_POLL_S: int = _get_int_env("ESP_POSE_POLL_S", 2)
 # telemetry in full detail for this many days, then thinned to one sample per TELEMETRY_THIN_S; poses are kept forever
 # erlaubter Origin für Browser-Zugriffe von fremden Seiten (z. B. http://localhost:5173); leer = keiner
 CORS_ORIGIN: str | None = _get_str_env("CORS_ORIGIN", None)
+# Reksio-Version des Images (aus dem Release-Tag), für den App-Download aus dem passenden GitHub-Release
+REKSIO_VERSION: str | None = _get_str_env("REKSIO_VERSION", None)
 TELEMETRY_RETENTION_DAYS: int = _get_int_env("TELEMETRY_RETENTION_DAYS", 30)
 TELEMETRY_THIN_S: int = _get_int_env("TELEMETRY_THIN_S", 60)
 
