@@ -10,7 +10,7 @@ from vacuula_server import cleaning_log, zone_queue as zq
 from vacuula_server.db import get_session
 from vacuula_server.models.run import Gen3__Run
 
-ZONES = [{"id": "z1", "name": "Flur"}, {"id": "z2", "name": "Treppe"}, {"id": "z3", "name": "Lajos"}]
+ZONES = [{"id": "z1", "name": "Flur"}, {"id": "z2", "name": "Treppe"}, {"id": "z3", "name": "Bad"}]
 
 
 class FakeRobot:
@@ -76,7 +76,7 @@ def test_all_zones_done(run_queue):
     job = run_queue(robot)
     assert robot.starts == ["z1", "z2", "z3"]
     assert job["status"] == "done" and job["finished"]
-    assert statuses(job) == [("Flur", "done", ["done"]), ("Treppe", "done", ["done"]), ("Lajos", "done", ["done"])]
+    assert statuses(job) == [("Flur", "done", ["done"]), ("Treppe", "done", ["done"]), ("Bad", "done", ["done"])]
 
 
 def test_failed_zone_is_retried_once_then_skipped(run_queue):
