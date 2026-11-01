@@ -1,6 +1,6 @@
-# Reksio-Server (Vacuula + Reksio-Web-App) mit fertigem Image.
-#   docker compose up -d   →   http://<host>:8050
-# network_mode host: der Roboter findet den Server per mDNS, und die Gen3-Ports (335) müssen direkt erreichbar sein.
+# Reksio server (Vacuula + Reksio web app) from the ready-made image.
+#   docker compose up -d   ->   http://<host>:8050
+# network_mode host: the robot finds the server via mDNS, and the Gen3 port (335) must be reachable directly.
 services:
   reksio:
     image: ghcr.io/volp02/reksio:latest
@@ -13,9 +13,9 @@ services:
       - GEN4_ENABLED=True
       - GEN4_PORT=3443
       - MDNS_ENABLED=True
-      # IP dieses Hosts im Heimnetz (für mDNS und das Zertifikat)
+      # LAN IP of this host (for mDNS and the certificate)
       - HOST_IP=192.168.1.10
-      # optional: ESP32 am Roboter (OpenNeato) für Telemetrie, Position und Akku-Diagnose
+      # optional: ESP32 on the robot (OpenNeato) for telemetry, position and battery diagnostics
       # - ESP_HOST=192.168.1.20
     volumes:
       - reksio-data:/server/data

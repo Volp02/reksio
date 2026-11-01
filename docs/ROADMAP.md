@@ -1,36 +1,29 @@
 # Roadmap
 
-## Vor dem ersten Release (v0.2.0)
+## Before the first release (v0.2.0)
 
-Das Release (Tag `v0.2.0`) kommt erst, wenn alles hier am echten Roboter und Handy getestet ist.
+The release (tag `v0.2.0`) only happens once everything here has been tested on the real robot and phone.
 
-- [ ] **Start-Knopf**: reinigt die ganze Karte (Kategorie Karte) und beachtet No-Go-Linien wie „Kabel“
-- [ ] **Zonenfolge mit Fehler**: eine Zone schlägt fehl (z. B. Weg versperrt) → zweiter Versuch → „nicht gereinigt“ im
-      Verlauf und als Meldung
-- [ ] **Zeitplan**: Termin „Ganze Karte“ startet wirklich (Kategorie Karte); „Heute auslassen“ am echten Termin
-- [ ] **Verlauf**: neue Zeitplan-/Zonenfahrt erscheint gruppiert, Strecke und Störungen stimmen
-- [ ] **App 0.2.0**: Installation über die alte App, Serversuche, Benachrichtigungen (Fehler, Zonen, Termin
-      ausgelassen), Wächter nach Neustart des Handys; Oberfläche aus der App (Start ohne Server, „App-Update“ bei neuerem
-      Server, Download-Link aus dem Release)
-- [ ] **Zugang**: Passwort setzen, App und Web anmelden, Wächter mit Anmeldung, Passwort wieder entfernen
-- [ ] **Release-Workflow**: Probelauf mit einem Vorab-Tag (z. B. `v0.2.0-rc1`): Image, APK, Firmware im Release
+- [ ] **Start button**: cleans the whole map (map category) and respects no-go lines such as "Cables"
+- [ ] **Zone sequence with an error**: one zone fails (e.g. path blocked) → second attempt → "not cleaned" in the history and as a notification
+- [ ] **Schedule**: a "Whole map" event really starts (map category); "Skip today" on a real event
+- [ ] **History**: a new schedule/zone run appears grouped, path and incidents are correct
+- [ ] **App 0.2.0**: install over the old app, server search, notifications (errors, zones, skipped event), watcher after a phone reboot; UI bundled in the app (starts without a server, "App update" with a newer server, download link from the release)
+- [ ] **Access**: set a password, log in from app and web, watcher with login, remove the password again
+- [x] **Release workflow**: dry run with a pre-release tag (`v0.2.0-rc2`): image, APK, firmware and APK attestation in the release
 
-## Als Nächstes
+## Next
 
-- **Onboarding**: geführte Einrichtung beim ersten Start (Server, Roboter verbinden, ESP optional, Karte erkunden,
-  Zonen anlegen), in Web-App und Android-App
-- **Anleitung**: Schritt für Schritt von „Neato ohne Cloud“ bis zur fertigen Einrichtung: Server (Docker), Roboter mit
-  Vacuula verbinden, ESP32 flashen und anschließen (optional), App installieren, Fehlersuche
-- **README für GitHub**: was Reksio ist (Bilder), Funktionen, Schnellstart mit dem fertigen Image, Links zu Anleitung,
-  Changelog und den Upstream-Projekten (Vacuula, OpenNeato), Lizenzen; auf Englisch, Deutsch als zweite Sprache
+- **Android app in English**: server setup screen and notifications are German only (the web UI already has both)
+- **Onboarding**: guided setup on first start (server, connect the robot, optional ESP, explore the map, create zones), in the web app and the Android app
+- **Guide**: step by step from "Neato without cloud" to a finished setup, with troubleshooting
+- **Zone count**: "1 zones" in the history
 
-## Später
+## Later
 
-- **App offline mit letztem Stand**: letzte Antworten (Karte, Verlauf, Telemetrie) in der App zwischenspeichern und
-  ohne Server als veraltet anzeigen (DESIGN.md §12.3) statt nur „Offline“
-
-- **Home Assistant**: Reksio als Saugroboter-Entität (Zustand, Akku, Start/Stopp/Basis, Zonen als Tasten)
-- **Wartung**: Filter, Bürsten und Akku mit Zählern und „getauscht“-Knopf, Erinnerungen
-- **Sicherung**: Datenbank exportieren/importieren in der App
-- **Upstream**: Änderungen an Vacuula und OpenNeato als Pull Requests (per `git subtree split`)
-- **Emulator-Tests der App**: braucht ffmpeg mit libx264 auf dem Docker-Host
+- **App offline with the last state**: cache telemetry too and show it as stale without a server (DESIGN.md §12.3) instead of just "Offline"
+- **Home Assistant**: Reksio as a vacuum entity (state, battery, start/stop/dock, zones as buttons)
+- **Maintenance**: filter, brushes and battery with counters and a "replaced" button, reminders
+- **Backup**: export/import the database in the app
+- **Upstream**: changes to Vacuula and OpenNeato as pull requests (via `git subtree split`)
+- **Emulator tests of the app**: needs ffmpeg with libx264 on the Docker host
