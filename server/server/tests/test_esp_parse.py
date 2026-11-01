@@ -52,3 +52,14 @@ def test_parse_errors_give_none():
     assert poller.parse_analog("GetAnalogSensors\r\nUnknown Cmd") is None
     assert poller.parse_motors("GetMotors\r\n") is None
     assert poller.parse_accel("") is None
+
+
+def test_parse_user_settings_bin_runtime_in_minutes():
+    raw = "\r\n".join([
+        "GetUserSettings", "Filter Change Time (seconds), 43200 ", "Brush Change Time (seconds), 259200 ",
+        "Dirt Bin Alert Reminder Interval (minutes), 90 ", "Current Dirt Bin Runtime is: 3572940",
+        "Number of Cleanings where Dust Bin was Full is: 0", "",
+    ])
+    assert poller.parse_user_settings(raw) == {
+        "binRuntimeMin": 59, "binFullCount": 0, "binReminderMin": 90, "filterChangeS": 43200, "brushChangeS": 259200,
+    }

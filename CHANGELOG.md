@@ -27,6 +27,8 @@ Erstes Release mit fertigem Server-Image, App und ESP-Firmware.
   LIDAR-Scan als Punkte um Reksio. Der ESP liest Scans nur, solange jemand zusieht (Anfrage gilt 15 s, die App erneuert
   sie alle 5 s bei sichtbarer Seite); nichts wird gespeichert, nach jedem Laden ist der Knopf aus. Solange er an
   ist, steht „Experimentell“ auf der Karte.
+- **Staubbehälter-Laufzeit in Minuten**: der Roboter meldet sie in Millisekunden, die Wartungskarte zeigte die rohe
+  Zahl (z. B. „3.342.470 von 90 min“ statt 55 min).
 - **Mehr Telemetrie vom ESP**: Saug- und Seitenbürstenstrom, Wand- und Bodensensoren (mm), Neigung und Drehrate,
   LIDAR-Drehzahl. Der Server liest dafür die rohen Serial-Antworten und wertet sie selbst aus; die ESP-Firmware erkennt
   `Vacuum_mA` und `ROTATION_SPEED` des D7 jetzt ebenfalls.

@@ -148,7 +148,8 @@ def parse_user_settings(raw: str) -> dict | None:
         m = re.search(pattern, raw)
         return int(m.group(1)) if m else None
     data = {
-        "binRuntimeMin": num(r"Current Dirt Bin Runtime is:\s*(\d+)"),
+        # der Roboter zählt die Laufzeit seit dem letzten Leeren in Millisekunden
+        "binRuntimeMin": (ms // 60000) if (ms := num(r"Current Dirt Bin Runtime is:\s*(\d+)")) is not None else None,
         "binFullCount": num(r"Dust Bin was Full is:\s*(\d+)"),
         "binReminderMin": num(r"Dirt Bin Alert Reminder Interval \(minutes\),\s*(\d+)"),
         "filterChangeS": num(r"Filter Change Time \(seconds\),\s*(\d+)"),
