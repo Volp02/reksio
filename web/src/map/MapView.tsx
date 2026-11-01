@@ -125,103 +125,109 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
     }, [grid])
     if (viewportRef) viewportRef.current = viewport
 
-    const draw = useCallback(() => {
-        cancelAnimationFrame(frame.current)
+    // Höchstens eine Zeichnung pro Frame. Eine schon angemeldete bleibt stehen und liest Ansicht und Daten erst beim
+    // Zeichnen. (Abmelden und neu anmelden ließ beim schnellen Ziehen während der Fahrt kein Bild mehr durch:
+    // die Gleit-Schleife stand in der Warteschlange davor und meldete die Zeichnung jedes Mal wieder ab.)
+    const paintRef = useRef<() => void>(() => undefined)
+    const redraw = useCallback(() => {
+        if (frame.current) return
         frame.current = requestAnimationFrame(() => {
-            const c = canvas.current
-            if (!c) return
-            const g = c.getContext('2d')!
-            const dpr = window.devicePixelRatio || 1
-            const { scale, x, y } = view.current
-            g.setTransform(dpr, 0, 0, dpr, 0, 0)
-            g.fillStyle = colors.bg
-            g.fillRect(0, 0, c.width, c.height)
-
-            if (scale * dpr <= BITMAP_SCALE * 1.25) {
-                // rausgezoomt: passende Stufe des vorgerenderten Bilds skalieren
-                g.imageSmoothingEnabled = true
-                g.imageSmoothingQuality = 'high'
-                g.drawImage(bitmaps(pickLevel(scale * dpr)), x, y, grid.width * scale, grid.height * scale)
-            } else {
-                // reingezoomt: Punkte als Kacheln in Bildschirmauflösung; fehlende kurz aus dem Kartenbild, dann scharf
-                const bitmap = bitmaps(BITMAP_SCALE)
-                const missing = tiles.current.draw(g, grid, colors, scale, dpr, x, y, c.width / dpr, c.height / dpr,
-                    (cx, cy, cells, dx, dy, size) => {
-                        g.drawImage(bitmap, cx * BITMAP_SCALE, cy * BITMAP_SCALE, cells * BITMAP_SCALE, cells * BITMAP_SCALE, dx, dy, size, size)
-                    })
-                if (missing) setTimeout(() => drawRef.current())
-            }
-
-            drawBoundaries(g, boundaries, grid, scale, x, y)
-            interact?.overlay?.(g, viewport())
-
-            // aktuelle (gleitende) Position von Reksio
-            const robot = live?.robot && (glidePose(glide.current, performance.now()) ?? live.robot)
-
-            // Spur der laufenden Fahrt; das letzte Stück endet an der gleitenden Position
-            if (live?.trail.length) {
-                g.beginPath()
-                const pts = robot ? [...live.trail.slice(0, -1), robot] : live.trail
-                pts.forEach((p, i) => (i ? g.lineTo(x + p.px * scale, y + p.py * scale) : g.moveTo(x + p.px * scale, y + p.py * scale)))
-                g.strokeStyle = colors.path
-                g.globalAlpha = live.robot ? 0.7 : 0.85
-                g.lineWidth = live.robot ? Math.max(2, Math.min(6, scale * 0.6)) : Math.max(1.25, Math.min(3, scale * 0.3))
-                g.lineJoin = 'round'
-                g.lineCap = 'round'
-                g.stroke()
-                g.globalAlpha = 1
-            }
-
-            // LIDAR: letzter Scan als Punkte um Reksio
-            if (live?.scan?.length) {
-                const d = Math.max(1.5, Math.min(3, scale * 0.45))
-                g.fillStyle = colors.path
-                g.globalAlpha = 0.8
-                for (const p of live.scan) g.fillRect(x + p.px * scale - d / 2, y + p.py * scale - d / 2, d, d)
-                g.globalAlpha = 1
-            }
-
-            if (data.dock) {
-                const dx = x + data.dock.pixel_x * scale, dy = y + data.dock.pixel_y * scale
-                const r = Math.max(4, Math.min(8, scale * 1.5))
-                g.fillStyle = colors.dock
-                g.strokeStyle = colors.bg
-                g.lineWidth = 2
-                g.beginPath()
-                g.arc(dx, dy, r, 0, Math.PI * 2)
-                g.fill()
-                g.stroke()
-            }
-
-            // Reksio: Punkt mit Blickrichtung, hohl wenn die Position veraltet ist
-            if (live?.robot && robot) {
-                const { stale } = live.robot
-                const { px, py, heading } = robot
-                const rx = x + px * scale, ry = y + py * scale
-                const r = Math.max(7, Math.min(14, scale * 4.2)) // D7 ≈ 33 cm ≈ 8,4 Zellen
-                g.lineWidth = 2.5
-                g.beginPath()
-                g.arc(rx, ry, r, 0, Math.PI * 2)
-                g.fillStyle = stale ? colors.bg : colors.path
-                g.strokeStyle = stale ? colors.path : colors.onPath
-                g.fill()
-                g.stroke()
-                g.beginPath()
-                g.moveTo(rx + Math.cos(heading) * r * 0.75, ry + Math.sin(heading) * r * 0.75)
-                g.lineTo(rx + Math.cos(heading + 2.5) * r * 0.45, ry + Math.sin(heading + 2.5) * r * 0.45)
-                g.lineTo(rx + Math.cos(heading - 2.5) * r * 0.45, ry + Math.sin(heading - 2.5) * r * 0.45)
-                g.closePath()
-                g.fillStyle = stale ? colors.path : colors.onPath
-                g.fill()
-            }
+            frame.current = 0
+            paintRef.current()
         })
-    }, [bitmaps, boundaries, colors, data.dock, grid, live, interact, viewport])
+    }, [])
+    useEffect(() => () => cancelAnimationFrame(frame.current), [])
 
-    // Zoom/Einpassen/Gesten rufen immer die aktuelle Zeichenfunktion, hängen aber nicht von ihr ab:
-    // sonst würde jede neue Live-Position die Ansicht neu einpassen
-    const drawRef = useRef(draw)
-    drawRef.current = draw
-    const redraw = useCallback(() => drawRef.current(), [])
+    const paint = useCallback(() => {
+        const c = canvas.current
+        if (!c) return
+        const g = c.getContext('2d')!
+        const dpr = window.devicePixelRatio || 1
+        const { scale, x, y } = view.current
+        g.setTransform(dpr, 0, 0, dpr, 0, 0)
+        g.fillStyle = colors.bg
+        g.fillRect(0, 0, c.width, c.height)
+
+        if (scale * dpr <= BITMAP_SCALE * 1.25) {
+            // rausgezoomt: passende Stufe des vorgerenderten Bilds skalieren
+            g.imageSmoothingEnabled = true
+            g.imageSmoothingQuality = 'high'
+            g.drawImage(bitmaps(pickLevel(scale * dpr)), x, y, grid.width * scale, grid.height * scale)
+        } else {
+            // reingezoomt: Punkte als Kacheln in Bildschirmauflösung; fehlende kurz aus dem Kartenbild, dann scharf
+            const bitmap = bitmaps(BITMAP_SCALE)
+            const missing = tiles.current.draw(g, grid, colors, scale, dpr, x, y, c.width / dpr, c.height / dpr,
+                (cx, cy, cells, dx, dy, size) => {
+                    g.drawImage(bitmap, cx * BITMAP_SCALE, cy * BITMAP_SCALE, cells * BITMAP_SCALE, cells * BITMAP_SCALE, dx, dy, size, size)
+                })
+            if (missing) redraw()
+        }
+
+        drawBoundaries(g, boundaries, grid, scale, x, y)
+        interact?.overlay?.(g, viewport())
+
+        // aktuelle (gleitende) Position von Reksio
+        const robot = live?.robot && (glidePose(glide.current, performance.now()) ?? live.robot)
+
+        // Spur der laufenden Fahrt; das letzte Stück endet an der gleitenden Position
+        if (live?.trail.length) {
+            g.beginPath()
+            const pts = robot ? [...live.trail.slice(0, -1), robot] : live.trail
+            pts.forEach((p, i) => (i ? g.lineTo(x + p.px * scale, y + p.py * scale) : g.moveTo(x + p.px * scale, y + p.py * scale)))
+            g.strokeStyle = colors.path
+            g.globalAlpha = live.robot ? 0.7 : 0.85
+            g.lineWidth = live.robot ? Math.max(2, Math.min(6, scale * 0.6)) : Math.max(1.25, Math.min(3, scale * 0.3))
+            g.lineJoin = 'round'
+            g.lineCap = 'round'
+            g.stroke()
+            g.globalAlpha = 1
+        }
+
+        // LIDAR: letzter Scan als Punkte um Reksio
+        if (live?.scan?.length) {
+            const d = Math.max(1.5, Math.min(3, scale * 0.45))
+            g.fillStyle = colors.path
+            g.globalAlpha = 0.8
+            for (const p of live.scan) g.fillRect(x + p.px * scale - d / 2, y + p.py * scale - d / 2, d, d)
+            g.globalAlpha = 1
+        }
+
+        if (data.dock) {
+            const dx = x + data.dock.pixel_x * scale, dy = y + data.dock.pixel_y * scale
+            const r = Math.max(4, Math.min(8, scale * 1.5))
+            g.fillStyle = colors.dock
+            g.strokeStyle = colors.bg
+            g.lineWidth = 2
+            g.beginPath()
+            g.arc(dx, dy, r, 0, Math.PI * 2)
+            g.fill()
+            g.stroke()
+        }
+
+        // Reksio: Punkt mit Blickrichtung, hohl wenn die Position veraltet ist
+        if (live?.robot && robot) {
+            const { stale } = live.robot
+            const { px, py, heading } = robot
+            const rx = x + px * scale, ry = y + py * scale
+            const r = Math.max(7, Math.min(14, scale * 4.2)) // D7 ≈ 33 cm ≈ 8,4 Zellen
+            g.lineWidth = 2.5
+            g.beginPath()
+            g.arc(rx, ry, r, 0, Math.PI * 2)
+            g.fillStyle = stale ? colors.bg : colors.path
+            g.strokeStyle = stale ? colors.path : colors.onPath
+            g.fill()
+            g.stroke()
+            g.beginPath()
+            g.moveTo(rx + Math.cos(heading) * r * 0.75, ry + Math.sin(heading) * r * 0.75)
+            g.lineTo(rx + Math.cos(heading + 2.5) * r * 0.45, ry + Math.sin(heading + 2.5) * r * 0.45)
+            g.lineTo(rx + Math.cos(heading - 2.5) * r * 0.45, ry + Math.sin(heading - 2.5) * r * 0.45)
+            g.closePath()
+            g.fillStyle = stale ? colors.path : colors.onPath
+            g.fill()
+        }
+    }, [bitmaps, boundaries, colors, data.dock, grid, live, interact, viewport, redraw])
+    paintRef.current = paint
+
 
     const fitScale = useCallback(() => {
         const el = wrap.current
@@ -289,7 +295,8 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
         raf = requestAnimationFrame(tick)
         return () => cancelAnimationFrame(raf)
     }, [target?.px, target?.py, target?.heading, redraw])
-    useEffect(() => { draw() }, [draw])
+    // neue Daten (Position, Zonen, Thema): neu zeichnen
+    useEffect(() => { redraw() }, [paint, redraw])
 
     // Mausrad und Gesten
     useEffect(() => {
