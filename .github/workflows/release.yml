@@ -132,6 +132,6 @@ jobs:
           sed "s#ghcr.io/volp02/reksio:latest#$image#" docs/compose.example.yaml > out/compose.yaml
           # Abschnitt der Version aus CHANGELOG.md (Vorabversion 0.2.0-rc1 → 0.2.0)
           awk -v v="${v%%-*}" 'index($0, "## " v) == 1 {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
-          { echo; echo "Server-Image: \`$image\`"; echo; echo "APK prüfen: \`gh attestation verify reksio.apk -R $GITHUB_REPOSITORY\`"; } >> notes.md
+          { echo; echo "Server image: \`$image\`"; echo; echo "Verify the APK: \`gh attestation verify reksio.apk -R $GITHUB_REPOSITORY\`"; } >> notes.md
           pre=""; case "$v" in *-*) pre="--prerelease";; esac
           gh release create "$GITHUB_REF_NAME" out/* $pre --title "Reksio $v" --notes-file notes.md
