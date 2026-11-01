@@ -4,6 +4,7 @@ Every ESP_POLL_S: state, error, charger, GetAnalogSensors, GetAccel (+ GetMotors
 Analog, accel and motors are read raw via /api/serial and parsed here, so the ESP needs no parser of its own
 (its /api/motors misses Vacuum_mA and ROTATION_SPEED on the D7).
 Every ESP_POSE_POLL_S while cleaning: `GetRobotPos Smooth` -> `pose` (kept forever).
+Only while someone watches live and Reksio cleans: `GetLDSScan` -> `lidar` events (see lidar.py, not stored).
 Telemetry older than TELEMETRY_RETENTION_DAYS is thinned to one sample per TELEMETRY_THIN_S, never deleted.
 Every HISTORY_IMPORT_S when idle: missing poses of finished runs from the ESP's own history (history_import).
 Both are broadcast on /api/events. Only cached read endpoints and GetRobotPos are used,
@@ -24,7 +25,7 @@ from sqlalchemy import Integer, delete, func, select
 from vacuula_server import cleaning_log
 from vacuula_server.db import db_commit2, get_session
 from vacuula_server.env import ESP_POLL_S, ESP_POSE_POLL_S, ESP_ROBOT, TELEMETRY_RETENTION_DAYS, TELEMETRY_THIN_S
-from vacuula_server.esp import history_import
+from vacuula_server.esp import history_import, lidar
 from vacuula_server.esp.config import get_esp_host
 from vacuula_server.handlers.events import broadcast
 from vacuula_server.models.app_setting import AppSetting
@@ -190,6 +191,7 @@ class EspPoller:
         self.next_cleanup = 0.0
         self.next_slow = 0.0
         self.next_history = time.time() + 60
+        self.next_lidar = 0.0
         self.last_bin_in: bool | None = None
         self.last_bin_clear = 0.0
 
@@ -292,14 +294,25 @@ class EspPoller:
         dismiss_cloud_alert(self.serial)
         broadcast("notice", {"serial": self.serial, "type": "dustbin_emptied", "ts": time.time()})
 
-    def poll_pose(self, now: float) -> None:
+    def poll_pose(self, now: float) -> tuple[float, float, float] | None:
         pose = self._pose()
         if pose is None:
-            return
+            return None
         x, y, theta = pose
         with get_session() as session:
             db_commit2(session, Pose(robot=self.serial, ts=now, x=x, y=y, theta=theta))
         broadcast("pose", {"serial": self.serial, "ts": now, "x": x, "y": y, "theta": theta})
+        return pose
+
+    def poll_lidar(self, now: float) -> None:
+        """Pose, Scan, Pose: nur ruhige Scans (kaum Drehung/Fahrt dazwischen) gehen raus, beide Posen zählen normal."""
+        before = self.poll_pose(now)
+        raw = self._serial("GetLDSScan") if before else None
+        after = self.poll_pose(time.time()) if raw else None
+        if not (before and raw and after) or not lidar.steady(before, after):
+            return
+        points = lidar.project(lidar.parse_scan(raw), before, after)
+        broadcast("lidar", {"serial": self.serial, "ts": now, "points": points})
 
     def cleanup(self, now: float) -> None:
         """Telemetrie älter als TELEMETRY_RETENTION_DAYS ausdünnen: pro Roboter und TELEMETRY_THIN_S nur die erste
@@ -335,7 +348,11 @@ class EspPoller:
             # keep the cleaning flag fresh between telemetry samples (ESP caches state for 2 s)
             self.state = self._get("/api/state") or self.state
         if self.online and is_cleaning(self.state):
-            self.poll_pose(now)
+            if lidar.wanted(self.serial, now) and now >= self.next_lidar:
+                self.next_lidar = now + lidar.INTERVAL_S
+                self.poll_lidar(now)
+            else:
+                self.poll_pose(now)
         if self.online and not is_cleaning(self.state) and now >= self.next_history:
             self.next_history = now + HISTORY_IMPORT_S
             try:

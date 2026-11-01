@@ -6,6 +6,8 @@ from urllib.parse import parse_qs, urlsplit
 from sqlalchemy import select
 
 from vacuula_server.db import get_session
+from vacuula_server.esp import lidar, poller
+from vacuula_server.esp.poller import is_cleaning
 from vacuula_server.models.telemetry import Pose, Telemetry
 
 from typing import TYPE_CHECKING
@@ -73,3 +75,12 @@ def get_poses(req: RouterHandler, serial: str) -> None:
             .limit(MAX_ROWS)
         ).all()
     req.send_ok([list(row) for row in rows])
+
+
+def post_lidar(req: RouterHandler, serial: str) -> None:
+    """POST /robot/<serial>/lidar - live LIDAR for the next few seconds (renew while watching); `lidar` events
+    follow while Reksio cleans. `scanning`: the ESP is reading scans right now."""
+    until = lidar.request(serial)
+    p = poller.current
+    scanning = bool(p and p.online and p.serial == serial and is_cleaning(p.state))
+    req.send_ok({"until": until, "scanning": scanning})
