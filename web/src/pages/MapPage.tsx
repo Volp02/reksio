@@ -725,6 +725,17 @@ export function MapPage() {
                     {tab === 'clean' && queue && <QueueView queue={queue} busy={busy === 'cancel'} onCancel={cancelQueue} />}
 
                     {tab === 'clean' && !queue && (<>
+                        {zones.length > 0 && (
+                            <div className="zpanel-top">
+                                <CleanModes />
+                                <div className="actions">
+                                    {selected.length > 0 && <Button variant="ghost" label={t.zones.clear} onClick={() => setSelected([])} />}
+                                    <Button variant="primary" icon={<Sparkles />} loading={busy === 'clean'}
+                                        label={busy === 'clean' ? t.actions.sending : selected.length > 1 ? fill(t.zones.cleanN, { n: selected.length }) : t.zones.cleanOne}
+                                        disabled={!selected.length || !canStart || !!busy} onClick={cleanSelected} />
+                                </div>
+                            </div>
+                        )}
                         {zones.length ? (
                             <ul className="rows">
                                 {zones.map((b) => {
@@ -745,15 +756,6 @@ export function MapPage() {
                                 })}
                             </ul>
                         ) : zonesEmpty}
-                        {zones.length > 0 && <>
-                            <CleanModes />
-                            <div className="actions zpanel-foot">
-                                {selected.length > 0 && <Button variant="ghost" label={t.zones.clear} onClick={() => setSelected([])} />}
-                                <Button variant="primary" icon={<Sparkles />} loading={busy === 'clean'}
-                                    label={busy === 'clean' ? t.actions.sending : selected.length > 1 ? fill(t.zones.cleanN, { n: selected.length }) : t.zones.cleanOne}
-                                    disabled={!selected.length || !canStart || !!busy} onClick={cleanSelected} />
-                            </div>
-                        </>}
                     </>)}
 
                     {tab === 'edit' && !draft && showHistory && current && (

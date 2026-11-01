@@ -11,6 +11,8 @@
 .zpanel { display: flex; flex-direction: column; gap: var(--s-4); max-height: calc(100dvh - 160px); overflow-y: auto; }
 .zpanel .seg { align-self: stretch; }
 .zpanel .ov-modes { flex-direction: column; }
+/* Reinigen: Modi und Knopf über der Zonenliste, auf dem Handy ohne Scrollen erreichbar */
+.zpanel-top { display: flex; flex-direction: column; gap: var(--s-4); padding-bottom: var(--s-4); border-bottom: 1px solid var(--border); }
 .zpanel-foot { position: sticky; bottom: calc(-1 * var(--s-5)); margin-bottom: calc(-1 * var(--s-5)); padding-block: var(--s-3) var(--s-5); background: var(--surface); border-top: 1px solid var(--border); }
 @container app (max-width: 900px) {
     .mappage-body { grid-template-columns: minmax(0, 1fr); }
@@ -137,8 +139,8 @@ a.rsteps-r[aria-current="true"] .row-t { color: var(--accent-text); }
     .week { gap: 2px; }
     .week-d { padding-inline: 2px; }
     .week-p { font-size: 11px; letter-spacing: -0.01em; }
-    /* „auslassen“ unter den Text, damit Tage und Ziel lesbar bleiben */
-    .splan { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--s-1); }
+    /* „auslassen“ unter den Text, damit Tage und Ziel lesbar bleiben (.row.splan, sonst gewinnt .row aus overview.css) */
+    .row.splan { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--s-1); }
     .splan-skip { grid-column: 1 / -1; grid-row: 2; justify-self: start; margin-left: calc(3.4 * var(--fs-h2) + var(--s-4) - var(--s-2)); }
 }
 .sched-ed { scroll-margin-top: var(--s-5); }

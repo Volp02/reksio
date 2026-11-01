@@ -156,7 +156,7 @@ export function EspSettings() {
         <div className="settings">
             <Card icon={<Cpu />} title={e.connection}
                 aside={conn?.host ? <Pill tone={conn.online ? 'ok' : 'neutral'} label={conn.online ? t.common.connected : t.common.offline} /> : undefined}>
-                <InputRow label={e.address} value={host} onChange={setHost} placeholder="192.168.178.148" mono invalid={!hostValid} />
+                <InputRow label={e.address} value={host} onChange={setHost} placeholder="192.168.1.20" mono invalid={!hostValid} />
                 <div className="actions">
                     <Button size="s" variant="primary" label={t.common.save} disabled={!hostValid || host.trim() === conn?.host}
                         loading={busy === 'host'} onClick={saveHost} />
@@ -200,7 +200,7 @@ export function EspSettings() {
                                 <SelectRow label={e.logLevel} value={d.logLevel} onChange={(v) => set('logLevel', v)}
                                     options={[{ value: 0, label: e.logOff }, { value: 1, label: 'Info' }, { value: 2, label: 'Debug' }]} />
                                 <Switch label={e.syslog} checked={d.syslogEnabled} onChange={(v) => set('syslogEnabled', v)} />
-                                {d.syslogEnabled && <InputRow label={e.syslogIp} value={d.syslogIp} onChange={(v) => set('syslogIp', v)} placeholder="192.168.178.45" mono />}
+                                {d.syslogEnabled && <InputRow label={e.syslogIp} value={d.syslogIp} onChange={(v) => set('syslogIp', v)} placeholder="192.168.1.10" mono />}
                                 <Switch label={e.apFallback} checked={d.apFallbackOnDisconnect} onChange={(v) => set('apFallbackOnDisconnect', v)} />
                             </Card>
 
