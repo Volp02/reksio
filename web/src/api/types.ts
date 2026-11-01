@@ -87,10 +87,24 @@ export interface Telemetry {
         extPwrPresent: boolean
         vBattV: number
     } | null
+    /** GetAnalogSensors (bei jeder Probe) */
     analog: {
         batteryVoltageV: number
         batteryCurrentMA: number
         batteryTemperatureC: number
+        externalVoltageV?: number
+        vacuumMA?: number
+        sideBrushMA?: number
+        /** Abstand zur Wand rechts, 255 = nichts in Reichweite */
+        wallMM?: number
+        /** Bodensensoren: Abstand zum Boden */
+        dropLeftMM?: number
+        dropRightMM?: number
+    } | null
+    /** GetAccel (bei jeder Probe): Neigung und Drehrate */
+    accel?: {
+        pitchDeg: number; rollDeg: number; sumG: number
+        gyroXDps: number; gyroYDps: number; gyroZDps: number
     } | null
     /** GetDigitalSensors (bei jeder Probe) */
     sensors?: {
@@ -111,7 +125,10 @@ export interface Telemetry {
         brushRPM: number
         brushMA: number
         vacuumRPM: number
+        vacuumMA?: number
         sideBrushMA: number
+        /** LIDAR-Drehzahl (der D7 meldet sie in U/s) */
+        laserRPM?: number
         leftWheelLoad: number
         rightWheelLoad: number
         leftWheelSpeed: number
