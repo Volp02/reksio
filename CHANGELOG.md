@@ -20,6 +20,8 @@ Erstes Release mit fertigem Server-Image, App und ESP-Firmware.
 - **Android-App 0.2.0**: Serveradresse in der App (Suche im Netz), Benachrichtigungen vom Server statt vom ESP.
 - **Zugang**: optionales Passwort (Einstellungen → Zugang); dann braucht jede /api-Anfrage eine Anmeldung (Cookie oder
   `Authorization: Bearer <token>` von `POST /api/auth/login`). Die Endpunkte des Roboters bleiben unberührt.
+- **Karte flüssig verschieben**: reingezoomt werden die Kartenpunkte als Bild zwischengespeichert, Verschieben
+  zeichnet nicht mehr jede Zelle neu (am Handy vorher ruckelig).
 - **LIDAR live**: Knopf auf der Live-Karte (Übersicht und Karte, nur während Reksio fährt) zeigt den aktuellen
   LIDAR-Scan als Punkte um Reksio. Der ESP liest Scans nur, solange jemand zusieht (Anfrage gilt 15 s, die App erneuert
   sie alle 5 s bei sichtbarer Seite); nichts wird gespeichert, nach jedem Laden ist der Knopf aus.

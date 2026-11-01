@@ -30,6 +30,32 @@ function glidePose(a: Glide, now: number): MapPose | undefined {
 
 interface View { scale: number; x: number; y: number }
 
+/**
+ * Reingezoomt gezeichnete Punkte als Bild zwischengespeichert: Verschieben setzt nur das Bild neu,
+ * statt jede Zelle in jedem Frame neu zu zeichnen (am Handy sonst ruckelig).
+ */
+interface DotCache { grid: Grid; colors: Colors; dpr: number; scale: number; x0: number; y0: number; x1: number; y1: number; canvas: HTMLCanvasElement }
+
+const CACHE_MAX_PX = 16e6 // Grenze für Canvas-Flächen in mobilen Browsern
+const SHARPEN_MS = 150 // nach dem Zoomen die Punkte scharf neu zeichnen
+
+/** sichtbarer Bereich (Zellen) plus Rand in jede Richtung, so groß wie es die Pixelgrenze zulässt */
+function renderDotCache(grid: Grid, colors: Colors, scale: number, dpr: number, vx0: number, vy0: number, vx1: number, vy1: number): DotCache {
+    const vw = vx1 - vx0, vh = vy1 - vy0
+    const pxPerCell = scale * dpr
+    // Rand: halbe Ansicht je Seite, bei großen Bildschirmen weniger
+    const m = Math.max(0, Math.min(0.5, (Math.sqrt(CACHE_MAX_PX / (vw * vh * pxPerCell * pxPerCell)) - 1) / 2))
+    const x0 = Math.max(0, Math.floor(vx0 - vw * m)), y0 = Math.max(0, Math.floor(vy0 - vh * m))
+    const x1 = Math.min(grid.width, Math.ceil(vx1 + vw * m)), y1 = Math.min(grid.height, Math.ceil(vy1 + vh * m))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.ceil((x1 - x0) * pxPerCell))
+    canvas.height = Math.max(1, Math.ceil((y1 - y0) * pxPerCell))
+    const g = canvas.getContext('2d')!
+    g.scale(dpr, dpr)
+    drawDots(g, grid, colors, scale, -x0 * scale, -y0 * scale, x0, y0, x1, y1)
+    return { grid, colors, dpr, scale, x0, y0, x1, y1, canvas }
+}
+
 /** Umrechnung zwischen Bildschirm (CSS-Pixel im Kartenfeld) und normierten Kartenkoordinaten (0..1) */
 export interface MapViewport {
     toScreen: (p: [number, number]) => [number, number]
@@ -89,6 +115,8 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
     const fitted = useRef(true)
     const frame = useRef(0)
     const glide = useRef<Glide>({ t0: 0 })
+    const dots = useRef<DotCache>(undefined)
+    const sharpen = useRef(0)
 
     const grid = useMemo<Grid>(() => toGrid(data, run), [data, run])
     // Farben und Punktebild nur bei neuer Karte oder neuem Thema neu erzeugen
@@ -141,11 +169,28 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
                 g.imageSmoothingQuality = 'high'
                 g.drawImage(bitmaps(pickLevel(scale * dpr)), x, y, grid.width * scale, grid.height * scale)
             } else {
-                // reingezoomt: nur sichtbare Zellen live, damit die Punkte scharf bleiben
+                // reingezoomt: Punkte in Bildschirmauflösung, zwischengespeichert für den sichtbaren Bereich plus Rand
                 const w = c.width / dpr, h = c.height / dpr
-                const x0 = Math.max(0, Math.floor(-x / scale)), y0 = Math.max(0, Math.floor(-y / scale))
-                const x1 = Math.min(grid.width, Math.ceil((w - x) / scale)), y1 = Math.min(grid.height, Math.ceil((h - y) / scale))
-                drawDots(g, grid, colors, scale, x, y, x0, y0, x1, y1)
+                const vx0 = -x / scale, vy0 = -y / scale, vx1 = (w - x) / scale, vy1 = (h - y) / scale
+                let d = dots.current
+                const same = d && d.grid === grid && d.colors === colors && d.dpr === dpr
+                const covers = same && d!.scale === scale
+                    && d!.x0 <= Math.max(0, Math.floor(vx0)) && d!.y0 <= Math.max(0, Math.floor(vy0))
+                    && d!.x1 >= Math.min(grid.width, Math.ceil(vx1)) && d!.y1 >= Math.min(grid.height, Math.ceil(vy1))
+                if (!covers && same && d!.scale !== scale) {
+                    // beim Zoomen das alte Bild skalieren, kurz nach dem letzten Schritt scharf neu zeichnen
+                    clearTimeout(sharpen.current)
+                    sharpen.current = window.setTimeout(() => { dots.current = undefined; drawRef.current() }, SHARPEN_MS)
+                } else if (!covers) {
+                    d = dots.current = renderDotCache(grid, colors, scale, dpr, vx0, vy0, vx1, vy1)
+                }
+                const exact = d!.scale === scale
+                g.imageSmoothingEnabled = !exact
+                // auf Gerätepixel runden, damit das Bild 1:1 und scharf bleibt
+                const dx = exact ? Math.round((x + d!.x0 * scale) * dpr) / dpr : x + d!.x0 * scale
+                const dy = exact ? Math.round((y + d!.y0 * scale) * dpr) / dpr : y + d!.y0 * scale
+                g.drawImage(d!.canvas, dx, dy, (d!.x1 - d!.x0) * scale, (d!.y1 - d!.y0) * scale)
+                g.imageSmoothingEnabled = true
             }
 
             drawBoundaries(g, boundaries, grid, scale, x, y)
@@ -212,6 +257,8 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             }
         })
     }, [bitmaps, boundaries, colors, data.dock, grid, live, interact, viewport])
+
+    useEffect(() => () => clearTimeout(sharpen.current), [])
 
     // Zoom/Einpassen/Gesten rufen immer die aktuelle Zeichenfunktion, hängen aber nicht von ihr ab:
     // sonst würde jede neue Live-Position die Ansicht neu einpassen
