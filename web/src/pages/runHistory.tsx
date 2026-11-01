@@ -60,7 +60,11 @@ export function isQuiet(code: string): boolean {
     return QUIET.test(code)
 }
 
-export function codeText(t: Dict, code: string, message?: string | null): string {
+/** der Roboter meldet manches als error_gen_…, der ESP dasselbe als error_… */
+const baseCode = (code: string) => code.replace(/^(alert|error)_gen_/, '$1_')
+
+export function codeText(t: Dict, rawCode: string, message?: string | null): string {
+    const code = baseCode(rawCode)
     return t.codes[code as keyof Dict['codes']]
         ?? t.errors[code.replace(/^(alert|error)_/, '') as keyof Dict['errors']]
         ?? message ?? code.replace(/^(alert|error)_/, '').replace(/_/g, ' ')
@@ -128,9 +132,22 @@ export function ZoneSteps({ t, locale, job, runs, incidents, now, selected, link
     )
 }
 
+/** Dieselbe Störung von ESP und Roboter (gleicher Code, Beginn kaum versetzt) nur einmal; der ESP-Eintrag hat den Text */
+function merged(incidents: Incident[]): Incident[] {
+    const out: Incident[] = []
+    for (const i of incidents) {
+        const k = out.findIndex((o) => o.source !== i.source && baseCode(o.code) === baseCode(i.code) && Math.abs(o.ts - i.ts) < 30)
+        if (k < 0) { out.push(i); continue }
+        const o = out[k]
+        const keep = o.source === 'esp' ? o : i
+        out[k] = { ...keep, ts: Math.min(o.ts, i.ts), end: o.end === null || i.end === null ? null : Math.max(o.end, i.end) }
+    }
+    return out
+}
+
 /** Störungen eines Zeitraums, ohne reine Ablauf-Hinweise */
 export function IncidentList({ t, locale, tz, incidents, now }: { t: Dict; locale: string; tz?: string; incidents: Incident[]; now: number }) {
-    const shown = incidents.filter((i) => !isQuiet(i.code))
+    const shown = merged(incidents.filter((i) => !isQuiet(i.code)))
     if (!shown.length) return null
     return (
         <ul className="rows rinc" aria-label={t.history.incidents}>
