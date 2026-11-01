@@ -138,6 +138,9 @@ export interface Telemetry {
 
 export interface Pose { ts: number; x: number; y: number; theta: number }
 
+/** ein LIDAR-Scan, Punkte in Posen-Koordinaten (Meter, Ursprung = Basis) */
+export interface LidarScan { ts: number; points: [number, number][] }
+
 export interface PersistentMap {
     id: string
     name: string

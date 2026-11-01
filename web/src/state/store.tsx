@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { API, api, gen3 } from '../api/client'
-import type { Pose, Robots, RobotStateData, ServerInfo, Telemetry, ZoneQueue } from '../api/types'
+import type { LidarScan, Pose, Robots, RobotStateData, ServerInfo, Telemetry, ZoneQueue } from '../api/types'
 
 const HISTORY_S = 3 * 3600
+const LIDAR_RENEW_MS = 5000 // Server liest Scans 15 s pro Anfrage
+const LIDAR_OFF_AFTER_S = 60 // so lange keine Position mehr: Fahrt vorbei, LIDAR aus
 
 export interface Store {
     server?: ServerInfo
@@ -22,6 +24,11 @@ export interface Store {
     notice?: Notice
     /** Zonen, die der Server nacheinander reinigen lässt */
     zoneQueue?: ZoneQueue | null
+    /** LIDAR live angefordert (Knopf auf der Karte, startet immer aus) */
+    lidarOn: boolean
+    setLidarOn: (on: boolean) => void
+    /** letzter LIDAR-Scan, solange `lidarOn` */
+    lidar?: LidarScan
     /** Zeitpunkt der letzten Änderung am Zeitplan des Servers (neu laden) */
     plansAt: number
     /** Sekundentakt für Frische-Anzeigen */
@@ -51,6 +58,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const [notice, setNotice] = useState<Notice>()
     const [zoneQueue, setZoneQueue] = useState<ZoneQueue | null>()
     const [plansAt, setPlansAt] = useState(0)
+    const [lidarOn, setLidarOn] = useState(false)
+    const [lidar, setLidar] = useState<LidarScan>()
     const [now, setNow] = useState(() => Date.now() / 1000)
     const [reload, setReload] = useState(0)
 
@@ -95,6 +104,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             if (p.serial !== serialRef.current) return
             setPose(p)
             setPoses((ps) => [...ps.filter((x) => x.ts > p.ts - HISTORY_S), p])
+        })
+        es.addEventListener('lidar', (e) => {
+            const l = JSON.parse((e as MessageEvent).data) as LidarScan & { serial: string }
+            if (l.serial === serialRef.current) setLidar({ ts: l.ts, points: l.points })
         })
         es.addEventListener('notice', (e) => {
             const n = JSON.parse((e as MessageEvent).data) as Notice & { serial: string }
@@ -153,10 +166,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }).catch(() => undefined)
     }, [serial, reload])
 
+    // LIDAR nur, solange jemand zusieht: Anfrage erneuern, solange an und die Seite sichtbar ist
+    useEffect(() => {
+        if (!lidarOn || !serial) { setLidar(undefined); return }
+        const ask = () => { if (document.visibilityState === 'visible') api.lidar(serial).catch(() => undefined) }
+        ask()
+        const id = setInterval(ask, LIDAR_RENEW_MS)
+        document.addEventListener('visibilitychange', ask)
+        return () => { clearInterval(id); document.removeEventListener('visibilitychange', ask) }
+    }, [lidarOn, serial])
+    useEffect(() => {
+        if (lidarOn && (!pose || now - pose.ts > LIDAR_OFF_AFTER_S)) setLidarOn(false)
+    }, [lidarOn, pose, now])
+
     const value: Store = {
         server, serverError, robots, serial,
         name: (serial && robots?.[serial]?.name) || 'Reksio',
         connected, robot, robotAt, telemetry, history, pose, poses, notice, zoneQueue, plansAt, now,
+        lidarOn, setLidarOn, lidar: lidarOn ? lidar : undefined,
         refresh: () => setReload((n) => n + 1),
         setZoneQueue,
         refreshRobot,

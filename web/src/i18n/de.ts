@@ -118,6 +118,7 @@ const de = {
         front: 'vorn',
         zones: 'Zonen',
         live: 'Live',
+        lidar: 'LIDAR live',
         mapList: 'Karten',
     },
     runs: {

@@ -16,6 +16,7 @@ import { Button, Card, Confirm, Empty, IconButton, InputRow, Label, Segmented, S
 import { CleanModes } from './CleanModes'
 import { MapsPanel } from './MapsPanel'
 import { BoundaryHistory } from './BoundaryHistory'
+import { LidarToggle } from '../map/LidarToggle'
 import './pages.css'
 
 // Farben für neue Zonen und Linien (wie in der Neato-/Vacuula-App)
@@ -681,6 +682,8 @@ export function MapPage() {
         ['poly', Pentagon, t.zones.toolPoly],
         ['line', Spline, t.zones.toolLine],
     ]
+    const lidarTool = tab === 'clean' && live?.robot && !live.robot.stale
+        ? <div className="maptools-g"><LidarToggle live={live} /></div> : undefined
     const tools = tab === 'edit' && data.data ? (<>
         <div className="maptools-g" role="toolbar" aria-label={t.zones.tools}>
             {toolButtons.map(([k, Icon, label]) => (
@@ -695,7 +698,7 @@ export function MapPage() {
                     disabled={sketch.length < (tool === 'poly' ? 3 : 2)} onClick={finishSketch} />}
             </div>
         )}
-    </>) : undefined
+    </>) : lidarTool
 
     return (
         <div className="mappage">

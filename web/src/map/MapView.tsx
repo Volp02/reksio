@@ -168,6 +168,15 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
                 g.globalAlpha = 1
             }
 
+            // LIDAR: letzter Scan als Punkte um Reksio
+            if (live?.scan?.length) {
+                const d = Math.max(1.5, Math.min(3, scale * 0.45))
+                g.fillStyle = colors.path
+                g.globalAlpha = 0.8
+                for (const p of live.scan) g.fillRect(x + p.px * scale - d / 2, y + p.py * scale - d / 2, d, d)
+                g.globalAlpha = 1
+            }
+
             if (data.dock) {
                 const dx = x + data.dock.pixel_x * scale, dy = y + data.dock.pixel_y * scale
                 const r = Math.max(4, Math.min(8, scale * 1.5))

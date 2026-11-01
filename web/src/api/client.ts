@@ -73,6 +73,8 @@ export const api = {
     cleanZones: (serial: string, mapId: string, zones: { id: string; name: string }[], mode: CleaningMode, navigationMode: NavigationMode) =>
         request<ZoneQueue>('POST', `/robot/${serial}/zones`, { mapId, zones, mode, navigationMode }),
     cancelZones: (serial: string) => request<void>('DELETE', `/robot/${serial}/zones`),
+    /** LIDAR live für die nächsten 15 s (beim Zusehen alle paar Sekunden erneuern); Punkte kommen als Ereignis `lidar` */
+    lidar: (serial: string) => request<{ until: number; scanning: boolean }>('POST', `/robot/${serial}/lidar`),
     command: <T = unknown>(serial: string, cmd: string, params?: object) =>
         request<T>('POST', `/robot/${serial}/command`, params ? { cmd, params } : { cmd }),
 }

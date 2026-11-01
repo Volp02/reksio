@@ -18,6 +18,7 @@ import { Button, Card, Confirm, Empty, IconButton, KV, Label, Pill, Toast, Value
 import { getPrefs, setPrefs, usePrefs } from '../state/prefs'
 import { DiagnosticsCard } from './Diagnostics'
 import { CleanModes } from './CleanModes'
+import { LidarToggle } from '../map/LidarToggle'
 import './overview.css'
 
 export function Overview() {
@@ -179,6 +180,7 @@ function MapCard() {
         <Card className="ov-map" icon={<MapIcon />} title={active?.name || t.map.floor}
             aside={<>
                 {live && <Pill tone={live.robot?.stale ? 'neutral' : 'info'} label={t.map.live} />}
+                <LidarToggle live={live} />
                 <IconButton size="s" icon={<Shapes />} label={t.map.zones} aria-pressed={prefs.zones}
                     className={prefs.zones ? 'is-cur' : ''} onClick={() => setPrefs({ zones: !prefs.zones })} />
                 <a href="#/map" className="btn btn--ghost btn--s"><Label>{t.nav.map}</Label></a>
