@@ -6,7 +6,9 @@ WORKDIR /web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ ./
-RUN npm run build
+# Reksio-Version aus dem Release-Tag (release.yml), sonst „dev“
+ARG REKSIO_VERSION=
+RUN VITE_REKSIO_VERSION="$REKSIO_VERSION" npm run build
 
 
 FROM python:3.14-slim AS python-build
@@ -34,4 +36,6 @@ COPY server/server/ssl/vacuula.cnf ./ssl/vacuula.cnf
 COPY server/server/alembic.ini ./
 COPY server/server/migrations ./migrations
 COPY --from=web /web/dist ./web
+ARG REKSIO_VERSION=
+ENV REKSIO_VERSION=$REKSIO_VERSION
 CMD ["sh", "-c", "alembic upgrade head && vacuula-server"]

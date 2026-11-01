@@ -37,21 +37,36 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: REKSIO_VERSION=${{ steps.meta.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   apk:
     runs-on: ubuntu-latest
+    # Herkunftsnachweis der APK (gh attestation verify)
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     defaults:
       run:
         working-directory: android
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
           cache: gradle
+      # die Oberfläche steckt in der APK (android/.../Oberflaeche.kt)
+      - name: Web-App
+        working-directory: web
+        run: npm ci && VITE_REKSIO_VERSION="${GITHUB_REF_NAME#v}" npm run build
       - name: Signierschlüssel
         id: key
         env:
@@ -70,11 +85,17 @@ jobs:
           export REKSIO_VERSIONNAME="$v" REKSIO_VERSIONCODE=$((major * 10000 + minor * 100 + patch))
           ./gradlew --no-daemon -q testReleaseUnitTest assembleRelease
           cp app/build/outputs/apk/release/app-release.apk "reksio-$v.apk"
+          # fester Name für Links: releases/latest/download/reksio.apk, releases/download/v<version>/reksio.apk
+          cp "reksio-$v.apk" reksio.apk
+      - if: steps.key.outputs.ok == 'true'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: android/reksio*.apk
       - if: steps.key.outputs.ok == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: apk
-          path: android/reksio-*.apk
+          path: android/reksio*.apk
 
   firmware:
     runs-on: ubuntu-latest
@@ -105,8 +126,8 @@ jobs:
           v="${GITHUB_REF_NAME#v}"
           image="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]'):$v"
           sed "s#ghcr.io/volp02/reksio:latest#$image#" docs/compose.example.yaml > out/compose.yaml
-          # Abschnitt der Version aus CHANGELOG.md
-          awk -v v="$v" 'index($0, "## " v) == 1 {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
-          { echo; echo "Server-Image: \`$image\`"; } >> notes.md
+          # Abschnitt der Version aus CHANGELOG.md (Vorabversion 0.2.0-rc1 → 0.2.0)
+          awk -v v="${v%%-*}" 'index($0, "## " v) == 1 {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
+          { echo; echo "Server-Image: \`$image\`"; echo; echo "APK prüfen: \`gh attestation verify reksio.apk -R $GITHUB_REPOSITORY\`"; } >> notes.md
           pre=""; case "$v" in *-*) pre="--prerelease";; esac
           gh release create "$GITHUB_REF_NAME" out/* $pre --title "Reksio $v" --notes-file notes.md
