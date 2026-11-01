@@ -56,7 +56,7 @@ export interface MapInteraction {
     /** Rechtsklick; true: kein Kontextmenü */
     context?: (x: number, y: number, vp: MapViewport) => boolean
     /** Maus ohne gedrückte Taste (undefined: Zeiger hat die Karte verlassen); Rückgabe: CSS-Cursor */
-    hover?: (p: { x: number; y: number; vp: MapViewport } | undefined) => string | undefined
+    hover?: (p: { x: number; y: number; vp: MapViewport; mods: Mods } | undefined) => string | undefined
     /** zusätzlich zeichnen, über Zonen und unter Reksio */
     overlay?: (g: CanvasRenderingContext2D, vp: MapViewport) => void
 }
@@ -311,7 +311,7 @@ export function MapView({ data, run, boundaries, live, label, controls = 'full',
             if (!prev) {
                 if (e.pointerType === 'mouse' && !onCtl(e)) {
                     const p = local(e)
-                    setCursor(interactRef.current?.hover?.({ ...p, vp: viewport() }))
+                    setCursor(interactRef.current?.hover?.({ ...p, vp: viewport(), mods: mods(e) }))
                 }
                 return
             }

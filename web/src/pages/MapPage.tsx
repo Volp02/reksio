@@ -6,7 +6,7 @@ import { fill, useI18n } from '../i18n'
 import { useStore } from '../state/store'
 import { getPrefs } from '../state/prefs'
 import { activeMap, useBoundaries, useMapData, useMaps, useZoneHistory } from '../state/data'
-import { MapView, type MapInteraction, type MapViewport } from '../map/MapView'
+import { MapView, type MapInteraction, type MapViewport, type Mods } from '../map/MapView'
 import { Legend } from '../map/Legend'
 import { useLive } from '../map/useLive'
 import { PX_PER_M } from '../map/pose'
@@ -30,7 +30,7 @@ type Tab = 'clean' | 'edit' | 'maps'
 type Tool = 'select' | 'rect' | 'poly' | 'line'
 interface Draft { b: Boundary; isNew: boolean; vertex?: number; orig?: string }
 type Drag = { kind: 'vertex'; i: number } | { kind: 'move'; from: Pt; orig: Pt[] } | { kind: 'rect'; from: Pt }
-interface Guides { u?: number; v?: number }
+interface Guides { u?: Pt; v?: Pt; at?: Pt } // Eckpunkte, an deren u bzw. v der Punkt at eingerastet ist
 
 function uuid(): string {
     // crypto.randomUUID gibt es nur über HTTPS; die App läuft im LAN auch über HTTP
@@ -65,20 +65,57 @@ function hitBoundary(list: Boundary[], x: number, y: number, vp: MapViewport, li
     return undefined
 }
 
-/** Eckpunkt i an die Nachbarn ausrichten, wenn er fast auf gleicher Höhe/Breite liegt */
-function snapVertex(p: Pt, i: number, vs: Pt[], closed: boolean, vp: MapViewport): [Pt, Guides] {
+/** Nachbarn von Eckpunkt i (Vorgänger, Nachfolger) */
+function neighbours(i: number, vs: Pt[], closed: boolean): Pt[] {
     const n = vs.length
     const near: Pt[] = []
     if (closed || i > 0) near.push(vs[(i - 1 + n) % n])
     if (closed || i < n - 1) near.push(vs[(i + 1) % n])
-    const tu = SNAP_PX / (vp.cells[0] * vp.scale), tv = SNAP_PX / (vp.cells[1] * vp.scale)
-    let [u, v] = p
+    return near
+}
+
+/** Punkt immer auf den Raster der Karte (Linien zwischen den Punkten); welche Rasterlinie, bestimmen die Nachbarn
+ *  oder Eckpunkte anderer Zonen auf fast gleicher Höhe/Breite (verlängerte Wände) */
+function snapPoint(p: Pt, near: Pt[], others: Boundary[], vp: MapViewport): [Pt, Guides] {
+    const [cu, cv] = vp.cells
+    const tu = SNAP_PX / (cu * vp.scale), tv = SNAP_PX / (cv * vp.scale)
     const g: Guides = {}
-    for (const q of near) {
-        if (g.u === undefined && Math.abs(q[0] - u) < tu) g.u = u = q[0]
-        if (g.v === undefined && Math.abs(q[1] - v) < tv) g.v = v = q[1]
+    let du = tu, dv = tv
+    for (const q of [...near, ...others.flatMap((b) => b.vertices)]) {
+        const eu = Math.abs(q[0] - p[0]), ev = Math.abs(q[1] - p[1])
+        if (eu < du) { du = eu; g.u = q }
+        if (ev < dv) { dv = ev; g.v = q }
     }
-    return [[u, v], g]
+    const u = Math.round((g.u ? g.u[0] : p[0]) * cu) / cu
+    const v = Math.round((g.v ? g.v[1] : p[1]) * cv) / cv
+    const at = clampPt([u, v])
+    return [at, { ...g, at }]
+}
+
+/** gestrichelte Hilfslinie vom Eckpunkt, an dem eingerastet wurde, bis über den Punkt hinaus */
+function drawGuides(g: CanvasRenderingContext2D, vp: MapViewport, gd: Guides, color: string) {
+    if (!gd.at || (!gd.u && !gd.v)) return
+    const [px, py] = vp.toScreen(gd.at)
+    g.save()
+    g.lineWidth = 1.25
+    g.strokeStyle = color
+    g.globalAlpha = 0.7
+    g.setLineDash([2, 4])
+    for (const [q, axis] of [[gd.u, 1], [gd.v, 0]] as const) {
+        if (!q) continue
+        const [qx, qy] = vp.toScreen(q)
+        const ext = 24
+        g.beginPath()
+        if (axis === 1) {
+            const s = Math.sign(py - qy) || 1
+            g.moveTo(px, Math.min(qy, py) - (s < 0 ? ext : 0)); g.lineTo(px, Math.max(qy, py) + (s > 0 ? ext : 0))
+        } else {
+            const s = Math.sign(px - qx) || 1
+            g.moveTo(Math.min(qx, px) - (s < 0 ? ext : 0), py); g.lineTo(Math.max(qx, px) + (s > 0 ? ext : 0), py)
+        }
+        g.stroke()
+    }
+    g.restore()
 }
 
 function cssVar(name: string): string {
@@ -175,6 +212,10 @@ export function MapPage() {
     const cells: [number, number] = data.data ? [data.data.width, data.data.height] : [1, 1]
     const dirty = !!draft && (draft.isNew || JSON.stringify(draft.b) !== draft.orig)
     const drawing = tool === 'poly' || tool === 'line'
+    // Einrasten: immer auf den Raster, Alt platziert frei
+    const snap = (p: Pt, near: Pt[], vp: MapViewport, mods?: Mods): [Pt, Guides] =>
+        mods?.alt ? [clampPt(p), {}] : snapPoint(p, near, all.filter((o) => o.id !== draft?.b.id), vp)
+    const sketchNear = () => (sketch.length ? [sketch[sketch.length - 1], sketch[0]] : [])
 
     const resetHistory = () => { history.current = []; setHistoryLen(0) }
     const pushHistory = (vs: Pt[]) => {
@@ -419,14 +460,14 @@ export function MapPage() {
             },
         }
         : {
-            tap: (x, y, vp) => {
+            tap: (x, y, vp, mods) => {
                 if (drawing) {
                     const ps = sketch.map(vp.toScreen)
                     const last = ps[ps.length - 1]
                     // zweiter Klick eines Doppelklicks: kein doppelter Punkt
                     if (last && Math.hypot(last[0] - x, last[1] - y) < HANDLE_PX) return
                     if (tool === 'poly' && ps.length >= 3 && Math.hypot(ps[0][0] - x, ps[0][1] - y) < HANDLE_PX) return finishSketch()
-                    setSketch([...sketch, clampPt(vp.toMap(x, y))])
+                    setSketch([...sketch, snap(vp.toMap(x, y), sketchNear(), vp, mods)[0]])
                     return
                 }
                 if (tool !== 'select') return
@@ -453,11 +494,15 @@ export function MapPage() {
                 return true
             },
             hover: (p) => {
-                if (!p) { setHoverId(undefined); setPointer(undefined); return undefined }
+                if (!p) { setHoverId(undefined); setPointer(undefined); guides.current = {}; return undefined }
                 const { x, y, vp } = p
                 if (tool !== 'select') {
                     setHoverId(undefined)
-                    if (drawing && sketch.length) setPointer(vp.toMap(x, y))
+                    if (drawing && sketch.length) {
+                        const [q, g] = snap(vp.toMap(x, y), sketchNear(), vp, p.mods)
+                        guides.current = g
+                        setPointer(q)
+                    }
                     return 'crosshair'
                 }
                 if (draft) {
@@ -477,9 +522,10 @@ export function MapPage() {
                 setHoverId(b?.id)
                 return b && !dirty ? 'pointer' : undefined
             },
-            grab: (x, y, vp) => {
+            grab: (x, y, vp, mods) => {
+                guides.current = {}
                 if (tool === 'rect') {
-                    const p = clampPt(vp.toMap(x, y))
+                    const p = snap(vp.toMap(x, y), [], vp, mods)[0]
                     drag.current = { kind: 'rect', from: p }
                     newDraft('polygon', [p, p, p, p])
                     return true
@@ -501,7 +547,7 @@ export function MapPage() {
                     const a = ps[i], c = ps[(i + 1) % vs.length]
                     if (Math.hypot((a[0] + c[0]) / 2 - x, (a[1] + c[1]) / 2 - y) < HANDLE_PX) {
                         pushHistory(vs)
-                        const nv = [...vs.slice(0, i + 1), vp.toMap(x, y), ...vs.slice(i + 1)] as Pt[]
+                        const nv = [...vs.slice(0, i + 1), snap(vp.toMap(x, y), [vs[i], vs[(i + 1) % vs.length]], vp, mods)[0], ...vs.slice(i + 1)] as Pt[]
                         drag.current = { kind: 'vertex', i: i + 1 }
                         setDraft({ ...draft, vertex: i + 1, b: { ...draft.b, vertices: nv } })
                         return true
@@ -524,19 +570,24 @@ export function MapPage() {
                 const p = clampPt(vp.toMap(x, y))
                 if (d.kind === 'rect') {
                     const [a, b] = d.from
-                    setDraft((cur) => cur && { ...cur, b: { ...cur.b, vertices: [[a, b], [p[0], b], p, [a, p[1]]] } })
+                    const [q, g] = snap(p, [], vp, mods)
+                    guides.current = g
+                    setDraft((cur) => cur && { ...cur, b: { ...cur.b, vertices: [[a, b], [q[0], b], q, [a, q[1]]] } })
                 } else if (d.kind === 'vertex') {
                     setDraft((cur) => {
                         if (!cur) return cur
-                        const [q, g] = mods.alt ? [p, {}] : snapVertex(p, d.i, cur.b.vertices, cur.b.type === 'polygon', vp)
+                        const [q, g] = snap(p, neighbours(d.i, cur.b.vertices, cur.b.type === 'polygon'), vp, mods)
                         guides.current = g
                         return { ...cur, b: { ...cur.b, vertices: cur.b.vertices.map((o, i) => (i === d.i ? q : o)) } }
                     })
                 } else {
                     // Form als Ganzes verschieben, ohne über den Kartenrand hinaus
                     const us = d.orig.map((o) => o[0]), vs = d.orig.map((o) => o[1])
-                    const du = Math.min(1 - Math.max(...us), Math.max(-Math.min(...us), p[0] - d.from[0]))
-                    const dv = Math.min(1 - Math.max(...vs), Math.max(-Math.min(...vs), p[1] - d.from[1]))
+                    // in ganzen Rasterschritten, damit Eckpunkte auf dem Raster bleiben
+                    const [cu, cv] = vp.cells
+                    const step = (dd: number, c: number) => (mods.alt ? dd : Math.round(dd * c) / c)
+                    const du = Math.min(1 - Math.max(...us), Math.max(-Math.min(...us), step(p[0] - d.from[0], cu)))
+                    const dv = Math.min(1 - Math.max(...vs), Math.max(-Math.min(...vs), step(p[1] - d.from[1], cv)))
                     setDraft((cur) => cur && { ...cur, b: { ...cur.b, vertices: d.orig.map(([a, b]) => [a + du, b + dv]) } })
                 }
             },
@@ -574,19 +625,13 @@ export function MapPage() {
                     g.setLineDash([])
                     ps.forEach(([px, py], i) => handle(g, px, py, i === 0 && tool === 'poly' && ps.length >= 3 ? 8 : 5.5, i === 0 ? color : surface, i === 0 ? surface : color))
                 }
+                // Hilfslinien beim Einrasten (verlängerte Kanten)
+                if ((sketch.length && pointer) || drag.current) drawGuides(g, vp, guides.current, accent)
                 if (!draft) return
                 const b = draft.b
                 const closed = b.type === 'polygon'
                 const ps = b.vertices.map(vp.toScreen)
                 if (ps.length < 2) return
-                // Hilfslinien beim Einrasten
-                const gd = guides.current
-                g.lineWidth = 1
-                g.strokeStyle = accent
-                g.setLineDash([3, 3])
-                if (gd.u !== undefined) { g.beginPath(); g.moveTo(...vp.toScreen([gd.u, 0])); g.lineTo(...vp.toScreen([gd.u, 1])); g.stroke() }
-                if (gd.v !== undefined) { g.beginPath(); g.moveTo(...vp.toScreen([0, gd.v])); g.lineTo(...vp.toScreen([1, gd.v])); g.stroke() }
-                g.setLineDash([])
                 g.beginPath()
                 ps.forEach((p, i) => (i ? g.lineTo(...p) : g.moveTo(...p)))
                 if (closed) {

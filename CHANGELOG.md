@@ -11,6 +11,8 @@ Erstes Release mit fertigem Server-Image, App und ESP-Firmware.
   der Karte (ein-/ausblendbar), ältere Fahrten aus dem ESP-Verlauf nachgetragen.
 - **Zonen**: Sicherung bei jedem Speichern mit Wiederherstellen, „zuletzt gereinigt“ pro Zone, Speichern übernimmt den
   aktuellen Stand des Roboters (kein Überschreiben mehr nach Neustarts).
+- **Einrasten beim Zeichnen**: Eckpunkte liegen immer auf dem Kartenraster (zwischen den Punkten) und richten sich an den
+  Kanten anderer Zonen aus (gepunktete Hilfslinie); Alt platziert frei.
 - **App-Download im Web**: Einstellungen → Android-App; im Android-Browser einmalig ein schließbarer Hinweis. Die APK
   liegt als `reksio-<version>.apk` in `data/app` des Servers.
 - **Start** reinigt die ganze Karte, damit No-Go-Linien gelten.
