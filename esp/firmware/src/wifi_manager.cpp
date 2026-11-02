@@ -43,7 +43,7 @@ String WiFiScanResult::toJson() const {
 // -- WiFiManager -------------------------------------------------------------
 
 WiFiManager::WiFiManager(Preferences& prefs, DataLogger& logger) :
-    LoopTask(WIFI_RECONNECT_INTERVAL), prefs(prefs), dataLogger(logger), menu("WiFi Configuration Menu"),
+    LoopTask(WIFI_TICK_INTERVAL), prefs(prefs), dataLogger(logger), menu("WiFi Configuration Menu"),
     networkMenu("Available WiFi Networks") {}
 
 void WiFiManager::begin() {
@@ -336,7 +336,7 @@ bool WiFiManager::connectToWiFi(const String& ssid, const String& password) {
     esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
 
     applyTxPower(); // Set before WiFi.begin — improves association reliability
-    WiFi.begin(ssid.c_str(), password.c_str());
+    beginSta(ssid, password);
 
     // Wait up to 30 seconds (60 attempts x 500ms).
     // Feed the task watchdog each iteration so slow associations (mesh APs,
@@ -385,6 +385,12 @@ void WiFiManager::setApFallbackOnDisconnect(bool enabled) {
     reevaluateFallbackAp();
 }
 
+void WiFiManager::beginSta(const String& ssid, const String& password, int32_t channel, const uint8_t *bssid) {
+    WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+    WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+    WiFi.begin(ssid.c_str(), password.c_str(), channel, bssid);
+}
+
 void WiFiManager::tick() {
     // Re-evaluate the AP regardless of STA state , this also handles the
     // recovery case where credentials are wiped via the API.
@@ -392,7 +398,28 @@ void WiFiManager::tick() {
 
     // Only attempt auto-reconnect if we were previously connected and are not
     // in config mode (user is actively setting up WiFi through the serial menu)
-    if (inConfigMode || !wasConnected || WiFi.status() == WL_CONNECTED)
+    if (inConfigMode || !wasConnected)
+        return;
+
+    if (WiFi.status() == WL_CONNECTED) {
+        if (reconnectStartMs != 0)
+            finishReconnect(true);
+        checkRoaming();
+        return;
+    }
+
+    if (roamScanActive) {
+        WiFi.scanDelete();
+        roamScanActive = false;
+    }
+
+    // Non-blocking: give the attempt time to associate instead of stalling loop()
+    if (reconnectStartMs != 0) {
+        if (millis() - reconnectStartMs >= WIFI_RECONNECT_WAIT)
+            finishReconnect(false);
+        return;
+    }
+    if (reconnectFailMs != 0 && millis() - reconnectFailMs < reconnectBackoff)
         return;
 
     if (apActive && WiFi.softAPgetStationNum() > 0) {
@@ -400,58 +427,117 @@ void WiFiManager::tick() {
         return;
     }
 
+    startReconnect();
+}
+
+void WiFiManager::startReconnect() {
+    String ssid, password;
+    if (!loadCredentials(ssid, password))
+        return;
+
     reconnectAttemptCount++;
     LOG("WIFI", "Connection lost — reconnecting (attempt %lu, backoff %lu ms)...", reconnectAttemptCount,
         reconnectBackoff);
+
+    WiFi.disconnect(true);
+    delay(100);
+    beginSta(ssid, password);
+    reconnectReason = "reconnect";
+    reconnectStartMs = millis() | 1;
+}
+
+void WiFiManager::finishReconnect(bool ok) {
+    unsigned long reconnectMs = millis() - reconnectStartMs;
+    reconnectStartMs = 0;
+    String ssid = WiFi.SSID();
+
+    if (ok) {
+        applyTxPower();
+        startMdns();
+        LOG("WIFI", "Reconnected (%s)! IP: %s, RSSI: %d, BSSID: %s, attempt: %lu", reconnectReason.c_str(),
+            WiFi.localIP().toString().c_str(), WiFi.RSSI(), WiFi.BSSIDstr().c_str(), reconnectAttemptCount);
+
+        dataLogger.logWifi(reconnectReason + "_ok", {{"ssid", ssid, FIELD_STRING},
+                                                     {"ip", WiFi.localIP().toString(), FIELD_STRING},
+                                                     {"rssi", String(WiFi.RSSI()), FIELD_INT},
+                                                     {"channel", String(WiFi.channel()), FIELD_INT},
+                                                     {"bssid", WiFi.BSSIDstr(), FIELD_STRING},
+                                                     {"attempt", String(reconnectAttemptCount), FIELD_INT},
+                                                     {"ms", String(reconnectMs), FIELD_INT}});
+        reconnectBackoff = WIFI_RECONNECT_INTERVAL; // Reset backoff on success
+        reconnectAttemptCount = 0;
+        reconnectFailMs = 0;
+        lastStaError = "";
+        roamTick.reset();
+        roamTick.elapsed(0); // Next roaming check a full interval from now
+        return;
+    }
+
+    // A failed roam is not a backoff step: retry right away with a normal sorted scan
+    if (reconnectReason == "reconnect") {
+        // Exponential backoff: 5s -> 10s -> 20s -> 30s (capped)
+        reconnectBackoff = min(reconnectBackoff * 2, static_cast<unsigned long>(WIFI_MAX_RECONNECT_BACKOFF));
+        reconnectFailMs = millis();
+    }
+    LOG("WIFI", "%s failed (status=%d), next attempt in %lu ms", reconnectReason.c_str(), WiFi.status(),
+        reconnectFailMs != 0 ? reconnectBackoff : 0UL);
+    lastStaError = wifiStatusReason(WiFi.status());
+
+    dataLogger.logWifi(reconnectReason + "_fail", {{"status", String(WiFi.status()), FIELD_INT},
+                                                   {"attempt", String(reconnectAttemptCount), FIELD_INT},
+                                                   {"backoff", String(reconnectBackoff), FIELD_INT},
+                                                   {"ms", String(reconnectMs), FIELD_INT}});
+}
+
+void WiFiManager::checkRoaming() {
+    if (roamScanActive) {
+        int16_t count = WiFi.scanComplete();
+        if (count == WIFI_SCAN_RUNNING)
+            return;
+        roamScanActive = false;
+        if (count > 0)
+            roamToBest(count);
+        WiFi.scanDelete();
+        return;
+    }
+
+    if (apActive || WiFi.RSSI() >= WIFI_ROAM_RSSI_THRESHOLD || !roamTick.elapsed(WIFI_ROAM_CHECK_INTERVAL))
+        return;
+
+    // Passive scan for our own SSID only: RX only, no probe request bursts
+    String ssid = WiFi.SSID();
+    roamScanActive =
+            WiFi.scanNetworks(true, false, true, WIFI_ROAM_SCAN_MS_PER_CHAN, 0, ssid.c_str()) == WIFI_SCAN_RUNNING;
+}
+
+void WiFiManager::roamToBest(int16_t count) {
+    int rssi = WiFi.RSSI();
+    String current = WiFi.BSSIDstr();
+    int best = -1;
+    for (int16_t i = 0; i < count; i++) {
+        if (WiFi.BSSIDstr(i) == current || WiFi.RSSI(i) < rssi + WIFI_ROAM_MIN_GAIN)
+            continue;
+        if (best < 0 || WiFi.RSSI(i) > WiFi.RSSI(best))
+            best = i;
+    }
+    if (best < 0)
+        return;
 
     String ssid, password;
     if (!loadCredentials(ssid, password))
         return;
 
-    WiFi.disconnect(true);
+    uint8_t bssid[6];
+    memcpy(bssid, WiFi.BSSID(best), sizeof(bssid));
+    int32_t channel = WiFi.channel(best);
+    LOG("WIFI", "Roaming %s (%d dBm) -> %s (%d dBm, ch %ld)", current.c_str(), rssi, WiFi.BSSIDstr(best).c_str(),
+        WiFi.RSSI(best), static_cast<long>(channel));
+
+    WiFi.disconnect(false);
     delay(100);
-    WiFi.begin(ssid.c_str(), password.c_str());
-
-    // Brief wait — shorter than initial connect but still blocks loop().
-    // Feed the watchdog each iteration to stay within the TWDT window.
-    unsigned long start = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - start < 5000) {
-        esp_task_wdt_reset();
-        delay(100);
-    }
-
-    unsigned long reconnectMs = millis() - start;
-
-    if (WiFi.status() == WL_CONNECTED) {
-        applyTxPower();
-        startMdns();
-        LOG("WIFI", "Reconnected! IP: %s, RSSI: %d, attempt: %lu", WiFi.localIP().toString().c_str(), WiFi.RSSI(),
-            reconnectAttemptCount);
-
-        dataLogger.logWifi("reconnect_ok", {{"ssid", ssid, FIELD_STRING},
-                                            {"ip", WiFi.localIP().toString(), FIELD_STRING},
-                                            {"rssi", String(WiFi.RSSI()), FIELD_INT},
-                                            {"channel", String(WiFi.channel()), FIELD_INT},
-                                            {"bssid", WiFi.BSSIDstr(), FIELD_STRING},
-                                            {"attempt", String(reconnectAttemptCount), FIELD_INT},
-                                            {"ms", String(reconnectMs), FIELD_INT}});
-        reconnectBackoff = WIFI_RECONNECT_INTERVAL; // Reset backoff on success
-        setInterval(reconnectBackoff);
-        reconnectAttemptCount = 0;
-        lastStaError = "";
-    } else {
-        // Exponential backoff: 5s -> 10s -> 20s -> 30s (capped)
-        reconnectBackoff = min(reconnectBackoff * 2, static_cast<unsigned long>(WIFI_MAX_RECONNECT_BACKOFF));
-        setInterval(reconnectBackoff);
-        LOG("WIFI", "Reconnect failed (status=%d), next attempt in %lu ms", WiFi.status(), reconnectBackoff);
-        lastStaError = wifiStatusReason(WiFi.status());
-
-        dataLogger.logWifi("reconnect_fail", {{"ssid", ssid, FIELD_STRING},
-                                              {"status", String(WiFi.status()), FIELD_INT},
-                                              {"attempt", String(reconnectAttemptCount), FIELD_INT},
-                                              {"backoff", String(reconnectBackoff), FIELD_INT},
-                                              {"ms", String(reconnectMs), FIELD_INT}});
-    }
+    beginSta(ssid, password, channel, bssid);
+    reconnectReason = "roam";
+    reconnectStartMs = millis() | 1;
 }
 
 String WiFiManager::wifiStatusReason(wl_status_t status) {

@@ -105,7 +105,7 @@ private:
     bool apFallbackOnDisconnect = true; // Mirrors setting; updated via setApFallbackOnDisconnect
     String lastStaError; // Last STA failure reason (cleared on successful connect)
 
-    void tick() override; // Called by LoopTask::loop() at WIFI_RECONNECT_INTERVAL cadence
+    void tick() override; // Called by LoopTask::loop() at WIFI_TICK_INTERVAL cadence
 
     // Apply TX power from NVS (called after WiFi.begin and after reconnect)
     void applyTxPower();
@@ -114,6 +114,22 @@ private:
     bool wasConnected = false;
     unsigned long reconnectBackoff = WIFI_RECONNECT_INTERVAL;
     unsigned long reconnectAttemptCount = 0;
+    unsigned long reconnectStartMs = 0; // Non-zero while an attempt is associating
+    unsigned long reconnectFailMs = 0; // When the last attempt timed out (0 = none)
+    String reconnectReason; // "reconnect" or "roam", for the log
+
+    // Roaming state
+    Ticker roamTick;
+    bool roamScanActive = false;
+
+    // WiFi.begin() with a full channel scan, so the strongest mesh node wins
+    // instead of the first one that answers (WIFI_FAST_SCAN default)
+    static void beginSta(const String& ssid, const String& password, int32_t channel = 0,
+                         const uint8_t *bssid = nullptr);
+    void startReconnect();
+    void finishReconnect(bool ok);
+    void checkRoaming();
+    void roamToBest(int16_t count);
 
     bool connectToWiFi(const String& ssid, const String& password);
 

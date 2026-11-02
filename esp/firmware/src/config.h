@@ -96,7 +96,15 @@ enum CommandStatus {
 };
 
 // Timing intervals (milliseconds)
-#define WIFI_RECONNECT_INTERVAL 5000
+#define WIFI_RECONNECT_INTERVAL 5000 // Initial backoff after a failed reconnect attempt (ms)
+#define WIFI_TICK_INTERVAL 1000 // WiFiManager tick cadence (reconnect/roaming state machine)
+#define WIFI_RECONNECT_WAIT 15000 // Time a reconnect attempt may take; mesh nodes often need >5s (ms)
+// Roaming between mesh nodes. Only while the signal is weak, with a passive scan
+// (RX only, no probe bursts) because the robot bus has a tight current budget.
+#define WIFI_ROAM_RSSI_THRESHOLD -72 // Look for a better node below this RSSI (dBm)
+#define WIFI_ROAM_MIN_GAIN 8 // Switch only if the other node is at least this much stronger (dB)
+#define WIFI_ROAM_CHECK_INTERVAL 120000 // Min time between roaming scans (ms)
+#define WIFI_ROAM_SCAN_MS_PER_CHAN 120 // Passive dwell per channel, just above the 102ms beacon interval
 #define RESET_BUTTON_HOLD_TIME 5000 // Hold for 5 seconds to reset
 
 // Data logger
