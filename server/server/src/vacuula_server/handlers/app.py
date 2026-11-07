@@ -17,6 +17,7 @@ import queue
 import os
 from vacuula_server.gen4.handlers import robot_send_request
 from vacuula_server.gen4.app import demote_floorplan
+from vacuula_server.gen4 import notices as gen4_notices
 from vacuula_server import boundary_backup, cleaning_log, zone_queue
 from vacuula_server.handlers.app_download import apk_info
 from vacuula_server.server_tz import server_timezone, utc_offset_minutes
@@ -344,6 +345,8 @@ def post_robot_command(req: RouterHandler, serial: str) -> None:
     if slot.event.is_set():
         if conn.gen == Generation.GEN3 and bounds_map and slot.status == 200 and _result_ok(slot.content):
             boundary_backup.store(serial, bounds_map, data["params"]["boundaries"])
+        if conn.gen == Generation.GEN4 and data.get("ability") == "state.show" and slot.status == 200 and isinstance(slot.content, dict):
+            gen4_notices.seen_state(serial, slot.content.get("body") or {})
         if conn.gen == Generation.GEN3 and data.get("cmd") == "getRobotState" and slot.status == 200:
             cleaning_log.robot_state_seen(serial, slot.content)
         _send_quietly(lambda: req.send_response_data(slot.content, True, slot.status))

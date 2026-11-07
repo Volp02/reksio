@@ -9,6 +9,7 @@ from vacuula_server.generation import Generation
 from vacuula_server.conn import RobotConn, Gen4Conn
 from vacuula_server.gen4.handlers import handle_login, robot_response, heartbeat_thread, robot_event, roboot_request
 from vacuula_server.state import robot_connections
+from vacuula_server.gen4 import notices
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +117,10 @@ def handle_robot(conn, addr):
         traceback.print_exc()
     finally:
         rc.stop_event.set()
-        del robot_connections[rc.serial]
+        # nach einem schnellen Neuverbinden gehört der Eintrag schon der neuen Verbindung
+        if robot_connections.get(rc.serial) is rc:
+            del robot_connections[rc.serial]
+            notices.disconnected(rc.serial)
         logger.info("Robot %s disconnected", rc.serial or addr)
         notify_robots_changed()
         try:

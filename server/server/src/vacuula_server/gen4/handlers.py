@@ -26,6 +26,7 @@ from PIL import Image
 import uuid
 import time
 from vacuula_server.server_tz import server_timezone
+from vacuula_server.gen4 import notices
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,7 @@ def handle_login(rc: RobotConn, msg):
             session.add(Gen4Data(robot=serial, label_serial=label_serial))
             session.commit()
 
+    notices.connected(serial)
     logger.info("Robot %s logged in with label_serial %s", serial, label_serial)
     notify_robots_changed()
 
@@ -170,6 +172,7 @@ def robot_response(rc: RobotConn, data: dict):
 
 
 def robot_event(rc: RobotConn, data: dict):
+    notices.on_event(rc.serial, data)
     # broadcast to all clients subscribed to this robot
     clients_subscribed = [
         c for c in client_connections
