@@ -41,7 +41,7 @@ export interface Store {
     setZoneQueue: (q: ZoneQueue | null) => void
 }
 
-export interface Notice { type: string; ts: number; reason?: string | null; failed?: string[] }
+export interface Notice { type: string; ts: number; reason?: string | null; failed?: string[]; code?: string }
 
 const Ctx = createContext<Store | null>(null)
 
@@ -130,7 +130,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
         es.addEventListener('notice', (e) => {
             const n = JSON.parse((e as MessageEvent).data) as Notice & { serial: string }
-            if (n.serial === serialRef.current) setNotice({ type: n.type, ts: n.ts, reason: n.reason })
+            if (n.serial === serialRef.current) setNotice({ type: n.type, ts: n.ts, reason: n.reason, failed: n.failed, code: n.code })
         })
         es.addEventListener('zones', (e) => {
             const z = JSON.parse((e as MessageEvent).data) as { serial: string; queue: ZoneQueue | null }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Bot, CalendarClock, Check, ChevronDown, ChevronLeft, Cpu, WifiOff, Download, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Smartphone, Sun, X } from 'lucide-react'
 import { useI18n, fill } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
-import { espProblem, robotStatus } from '../status'
+import { espProblem, problemText, robotStatus } from '../status'
 import { fmtTime } from '../format'
 import { useTheme } from '../ui/theme'
 import { IconButton, Label, Pill, Toast } from '../ui/ui'
@@ -108,6 +108,8 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
             zones_stopped: t.zones.stoppedBusy,
             plan_started: t.schedule.started_notice,
             plan_skipped: t.schedule.skipped_notice,
+            robot_error: problemText(t, store.notice?.code) ?? t.status.error,
+            robot_offline: t.status.offline,
         } as Record<string, string>)[store.notice?.type ?? '']
         if (text) setToast(text)
     }, [store.notice, t])

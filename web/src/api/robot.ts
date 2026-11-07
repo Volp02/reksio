@@ -3,6 +3,7 @@ import {
     CleaningMode, NavigationMode, RobotAction, RobotState,
     type Boundary, type Gen4Boundary, type MapData, type PersistentMap, type Robots, type RobotStateData, type RunSummary, type ScheduleEvent,
 } from './types'
+import { GEN4_QUIET } from '../i18n/gen4codes'
 
 /**
  * Befehle und Daten unabhängig von der Generation: Gen3 (D3–D7, Cloud-Protokoll mit `cmd`) und Gen4 (D8–D10, „abilities“).
@@ -41,6 +42,8 @@ interface Gen4Run {
     runs: { state: string; stats: { area: number; pickup_count: number } }[]
 }
 
+export interface Gen4Settings { forceFloorplan: boolean; language: string; languages: string[] }
+
 interface Gen4ScheduleEvent { enabled: boolean; days: string[]; time: string }
 
 const STATES: Record<string, RobotState> = { idle: RobotState.IDLE, busy: RobotState.BUSY, paused: RobotState.PAUSED, error: RobotState.ERROR }
@@ -54,7 +57,7 @@ const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 export function fromGen4State(b: Gen4State): RobotStateData {
     const errors = b.errors ?? []
     const error = errors.find((e) => e.severity === 'error' || e.severity === 'critical')
-    const alert = errors.find((e) => e.severity === 'warning')
+    const alert = errors.find((e) => e.severity === 'warning' && !GEN4_QUIET.test(e.code))
     const av = b.available_commands ?? {}
     return {
         state: STATES[b.state] ?? RobotState.INVALID,
@@ -264,6 +267,17 @@ export const robot = {
         if (!body.enabled) return []
         return body.events.filter((e) => e.enabled).flatMap((e) => e.days.map((d) => ({ day: DAYS.indexOf(d), startTime: e.time })))
     },
+
+    /** Gen4: Einstellungen am Roboter */
+    gen4Settings: async (s: string): Promise<Gen4Settings> => {
+        const [opts, lang] = await Promise.all([
+            api.ability<{ force_floorplan: boolean }>(s, 'settings.cleaning_options'),
+            api.ability<{ language: string; available_languages: string[] }>(s, 'settings.robot_language'),
+        ])
+        return { forceFloorplan: !!opts.body.force_floorplan, language: lang.body.language, languages: lang.body.available_languages ?? [] }
+    },
+    setForceFloorplan: (s: string, on: boolean) => api.ability(s, 'settings.set_cleaning_options', { force_floorplan: on }),
+    setLanguage: (s: string, language: string) => api.ability(s, 'settings.set_robot_language', { language }),
 
     /** Modell und Firmware */
     info: async (s: string): Promise<{ model?: string; firmware?: string }> => {

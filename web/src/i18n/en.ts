@@ -1,8 +1,10 @@
 import type { Dict } from './de'
+import { GEN4_CODES_EN } from './gen4codes'
 
 type Shape<T> = { [K in keyof T]: T[K] extends string ? string : T[K] extends string[] ? string[] : Shape<T[K]> }
 
 const en: Shape<Dict> = {
+    gen4: GEN4_CODES_EN,
     nav: {
         overview: 'Overview',
         map: 'Map',
@@ -226,6 +228,9 @@ const en: Shape<Dict> = {
         unskip: 'Clean anyway',
     },
     settings: {
+        forceFloorplan: 'Clean with map only',
+        robotLanguage: 'Robot language',
+        robotSaved: 'Saved on the robot',
         title: 'Settings',
         appServer: 'App server address',
         appearance: 'Appearance',
@@ -464,6 +469,8 @@ const en: Shape<Dict> = {
         saved: 'Saved',
         saveFailed: 'Saving failed',
         busySave: "Can't save while cleaning",
+        noGoArea: 'No-go area',
+        kind: 'Type',
         tooFewPoints: 'Too few points',
         selfIntersecting: 'Edges cross',
         tooSmall: 'Too small',

@@ -55,8 +55,9 @@ export function robotStatus(t: Dict, connected: boolean, r: RobotStateData | und
 /** Fehler-/Hinweis-Code des Roboters übersetzen, sonst Originaltext */
 export function problemText(t: Dict, code: string | null | undefined): string | undefined {
     if (!code) return undefined
+    if (/^(swu_|tron_)/.test(code)) return t.gen4.sw_upgrade_failure
     const key = code.replace(/^ui_(error|alert)_/, '') as keyof Dict['errors']
-    return t.errors[key] ?? t.codes[`alert_${key}` as keyof Dict['codes']] ?? t.codes[`error_${key}` as keyof Dict['codes']] ?? code.replace(/_/g, ' ')
+    return t.gen4[code] ?? t.errors[key] ?? t.codes[`alert_${key}` as keyof Dict['codes']] ?? t.codes[`error_${key}` as keyof Dict['codes']] ?? code.replace(/_/g, ' ')
 }
 
 export function isCleaning(r: RobotStateData | undefined): boolean {

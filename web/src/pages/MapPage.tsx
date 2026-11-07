@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, History, Map as MapIcon, MousePointer2, Pencil, Pentagon, Plus, Route, Shapes, Sparkles, Spline, Square, Trash2, Undo2, X } from 'lucide-react'
+import { Ban, Check, History, Map as MapIcon, MousePointer2, Pencil, Pentagon, Plus, Route, Shapes, Sparkles, Spline, Square, Trash2, Undo2, X } from 'lucide-react'
 import { api } from '../api/client'
 import { isGen4, robot } from '../api/robot'
 import { isCleaning } from '../status'
@@ -43,6 +43,11 @@ function uuid(): string {
     const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('')
     return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
 }
+
+/** Gen4: Fläche, in die der Roboter nicht fährt (sonst ist jedes Vieleck eine Zone) */
+const isNoGoArea = (b: Boundary) => b.type === 'polygon' && b.function === 'nogo'
+const isZone = (b: Boundary) => b.type === 'polygon' && b.function !== 'nogo'
+const NOGO_COLOR = '#f97373'
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v))
 const clampPt = ([u, v]: Pt): Pt => [clamp(u), clamp(v)]
@@ -210,7 +215,7 @@ export function MapPage() {
         const days = last * 1000 >= today ? 0 : Math.ceil((today - last * 1000) / 86400000)
         return days === 0 ? t.zones.cleanedToday : days === 1 ? t.zones.cleanedYesterday : fill(t.zones.cleanedDays, { n: days })
     }
-    const zones = all.filter((b) => b.type === 'polygon')
+    const zones = all.filter(isZone)
     const queue = s.zoneQueue && s.zoneQueue.mapId === current ? s.zoneQueue : undefined
     const cells: [number, number] = data.data ? [data.data.width, data.data.height] : [1, 1]
     const dirty = !!draft && (draft.isNew || JSON.stringify(draft.b) !== draft.orig)
@@ -240,14 +245,16 @@ export function MapPage() {
         resetHistory()
     }
 
-    const newDraft = (type: Boundary['type'], vertices: Pt[]) => {
+    const newDraft = (type: Boundary['type'], vertices: Pt[], fn?: Boundary['function']) => {
         const used = new Set(all.map((b) => b.color.toLowerCase()))
+        const nogo = fn === 'nogo'
         setDraft({
             isNew: true,
             b: {
                 id: uuid(), type, enabled: true, vertices: vertices.map(clampPt),
-                name: type === 'polygon' ? `${t.zones.zone} ${zones.length + 1}` : '',
-                color: PRESETS.find((c) => !used.has(c)) ?? PRESETS[all.length % PRESETS.length],
+                name: type === 'polygon' && !nogo ? `${t.zones.zone} ${zones.length + 1}` : '',
+                color: nogo ? NOGO_COLOR : PRESETS.find((c) => !used.has(c)) ?? PRESETS[all.length % PRESETS.length],
+                ...(fn ? { function: fn } : {}),
             },
         })
         setError(undefined)
@@ -255,7 +262,7 @@ export function MapPage() {
     }
 
     /** neue Form in der Bildmitte (vor allem fürs Handy) */
-    const create = (type: Boundary['type']) => {
+    const create = (type: Boundary['type'], fn?: Boundary['function']) => {
         const vp = vpRef.current?.()
         if (!vp) return
         const [cx, cy] = vp.center()
@@ -266,7 +273,7 @@ export function MapPage() {
         setSketch([])
         newDraft(type, type === 'polygon'
             ? [[cx - du, cy - dv], [cx + du, cy - dv], [cx + du, cy + dv], [cx - du, cy + dv]]
-            : [[cx - du, cy], [cx + du, cy]])
+            : [[cx - du, cy], [cx + du, cy]], fn)
     }
 
     const chooseTool = (k: Tool) => {
@@ -347,7 +354,7 @@ export function MapPage() {
         const b = draft.b
         const shapeError = validateShape(b.vertices, b.type === 'polygon')
         if (shapeError) return setError(t.zones[shapeError])
-        if (b.type === 'polygon' && !b.name.trim()) return setError(t.zones.nameMissing)
+        if (isZone(b) && !b.name.trim()) return setError(t.zones.nameMissing)
         setError(undefined)
         const nb = { ...b, name: b.name.trim() }
         save((list) => (draft.isNew || !list.some((x) => x.id === nb.id) ? [...list, nb] : list.map((x) => (x.id === nb.id ? nb : x))))
@@ -777,11 +784,11 @@ export function MapPage() {
                                 {all.map((b) => (
                                     <li key={b.id}>
                                         <button type="button" className="row zrow" onClick={() => edit(b)} {...rowHover(b.id)}>
-                                            <span className={`zrow-c zrow-c--${b.type}`} style={{ ['--c' as string]: b.color || 'var(--danger)' }} aria-hidden />
+                                            <span className={`zrow-c zrow-c--${isNoGoArea(b) ? 'nogo' : b.type}`} style={{ ['--c' as string]: b.color || 'var(--danger)' }} aria-hidden />
                                             <span className="row-main">
-                                                <Label className="row-t">{b.name || (b.type === 'polyline' ? t.zones.line : t.zones.unnamed)}</Label>
+                                                <Label className="row-t">{b.name || (b.type === 'polyline' ? t.zones.line : isNoGoArea(b) ? t.zones.noGoArea : t.zones.unnamed)}</Label>
                                                 <Label className="row-s">{b.type === 'polygon'
-                                                    ? fill(t.zones.area, { a: fmtNumber(locale, areaM2(b.vertices, cells), 1) })
+                                                    ? [isNoGoArea(b) && b.name ? t.zones.noGoArea : '', fill(t.zones.area, { a: fmtNumber(locale, areaM2(b.vertices, cells), 1) })].filter(Boolean).join(' · ')
                                                     : b.enabled === false ? `${t.zones.line} · ${t.common.none}` : t.zones.line}</Label>
                                             </span>
                                             <Pencil className="row-i" />
@@ -793,6 +800,7 @@ export function MapPage() {
                         <div className="actions zpanel-foot">
                             {!isGen4(s.serial) && <Button variant="ghost" icon={<History />} label={t.zones.history} disabled={!current} onClick={() => setShowHistory(true)} />}
                             <Button icon={<Route />} label={t.zones.newLine} disabled={!s.connected || !data.data || !bounds.data} onClick={() => create('polyline')} />
+                            {isGen4(s.serial) && <Button icon={<Ban />} label={t.zones.noGoArea} disabled={!s.connected || !data.data || !bounds.data} onClick={() => create('polygon', 'nogo')} />}
                             <Button icon={<Plus />} label={t.zones.newZone} disabled={!s.connected || !data.data || !bounds.data} onClick={() => create('polygon')} />
                         </div>
                     </>)}
@@ -800,9 +808,16 @@ export function MapPage() {
                     {tab === 'edit' && draft && (
                         <div className="zedit">
                             <div className="zedit-h">
-                                <Label className="zedit-t">{draft.b.type === 'polygon' ? t.zones.zone : t.zones.line}</Label>
+                                <Label className="zedit-t">{isNoGoArea(draft.b) ? t.zones.noGoArea : draft.b.type === 'polygon' ? t.zones.zone : t.zones.line}</Label>
                                 <IconButton size="s" icon={<X />} label={t.common.cancel} aria-keyshortcuts="Escape" onClick={() => setDraft(undefined)} />
                             </div>
+                            {draft.b.type === 'polygon' && isGen4(s.serial) && (
+                                <div className="field"><Label className="field-l">{t.zones.kind}</Label>
+                                    <Segmented<'cleaning' | 'nogo'> label={t.zones.kind} value={draft.b.function ?? 'cleaning'}
+                                        onChange={(v) => { setError(undefined); setDraft({ ...draft, b: { ...draft.b, function: v } }) }}
+                                        options={[{ value: 'cleaning', label: t.zones.zone }, { value: 'nogo', label: t.zones.noGoArea }]} />
+                                </div>
+                            )}
                             <InputRow label={t.zones.name} value={draft.b.name} invalid={error === t.zones.nameMissing}
                                 onChange={(v) => setDraft({ ...draft, b: { ...draft.b, name: v.slice(0, 40) } })} />
                             <div className="field">
@@ -834,8 +849,8 @@ export function MapPage() {
                     )}
                 </Card>
             </div>
-            {tab === 'clean' && <Legend boundaries={all.filter((b) => b.type === 'polyline')} noGo={t.map.noGo} />}
-            <Confirm open={confirmDelete} title={fill(t.zones.deleteConfirm, { name: draft?.b.name || t.zones.line })}
+            {tab === 'clean' && <Legend boundaries={all.filter((b) => !isZone(b))} noGo={t.map.noGo} noGoArea={t.zones.noGoArea} />}
+            <Confirm open={confirmDelete} title={fill(t.zones.deleteConfirm, { name: draft?.b.name || (draft && isNoGoArea(draft.b) ? t.zones.noGoArea : t.zones.line) })}
                 confirmLabel={t.zones.delete} cancelLabel={t.common.cancel} onCancel={() => setConfirmDelete(false)} onConfirm={remove} />
             <Toast text={toast} onClose={() => setToast(undefined)} />
         </div>

@@ -18,3 +18,4 @@
 .legend-i { display: inline-flex; align-items: center; gap: 6px; max-width: var(--w-ctl-max); }
 .legend-i::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 3px; background: color-mix(in oklab, var(--c) 30%, transparent); border: 1.5px solid var(--c); }
 .legend-i--polyline::before { height: 0; border-width: 0; border-top: 3px dashed var(--c); border-radius: 0; width: 14px; background: none; }
+.legend-i--nogo::before { border-style: dashed; background: repeating-linear-gradient(-45deg, color-mix(in oklab, var(--c) 50%, transparent) 0 1.5px, transparent 1.5px 4px); }

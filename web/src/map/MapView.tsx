@@ -429,16 +429,37 @@ function drawBoundaries(g: CanvasRenderingContext2D, boundaries: Boundary[] | un
 
     for (const b of visible) {
         if (b.type !== 'polygon' || b.vertices.length < 3) continue
+        const nogo = b.function === 'nogo'
         g.beginPath()
         b.vertices.forEach((p, i) => (i ? g.lineTo(...pt(p)) : g.moveTo(...pt(p))))
         g.closePath()
-        g.globalAlpha = 0.18
+        g.globalAlpha = nogo ? 0.12 : 0.18
         g.fillStyle = b.color
         g.fill()
         g.globalAlpha = 1
+        if (nogo) {
+            // Sperrfläche: schraffiert und gestrichelt, damit sie sich von Zonen abhebt
+            const ps = b.vertices.map(pt)
+            const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1])
+            const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys)
+            g.save()
+            g.clip()
+            g.beginPath()
+            for (let d = x0 - (y1 - y0); d < x1; d += 8) { g.moveTo(d, y1); g.lineTo(d + (y1 - y0), y0) }
+            g.lineWidth = 1.25
+            g.globalAlpha = 0.55
+            g.strokeStyle = b.color
+            g.stroke()
+            g.restore()
+            g.beginPath()
+            b.vertices.forEach((p, i) => (i ? g.lineTo(...pt(p)) : g.moveTo(...pt(p))))
+            g.closePath()
+            g.setLineDash([6, 4])
+        }
         g.lineWidth = 2
         g.strokeStyle = b.color
         g.stroke()
+        g.setLineDash([])
     }
     for (const b of visible) {
         if (b.type !== 'polyline' || b.vertices.length < 2) continue

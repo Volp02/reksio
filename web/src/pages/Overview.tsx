@@ -3,7 +3,7 @@ import {
     BatteryCharging, Shapes, Trash2, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, History, House, Map as MapIcon, Pause, Play, Square, TriangleAlert,
 } from 'lucide-react'
 import { esp } from '../api/client'
-import { robot } from '../api/robot'
+import { isGen4, robot } from '../api/robot'
 import { CleaningCategory, CleaningMode, NavigationMode } from '../api/types'
 import { fill, useI18n } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
@@ -24,6 +24,7 @@ import './overview.css'
 
 export function Overview() {
     const prefs = usePrefs()
+    const s = useStore()
     return (
         <div className="ov">
             <div className="ov-col ov-col--main"><MapCard /><RunsCard /></div>
@@ -31,7 +32,7 @@ export function Overview() {
                 <ControlCard />
                 <BatteryCard />
                 <MaintenanceCard />
-                {prefs.diagnostics && <DiagnosticsCard className="ov-diag" />}
+                {prefs.diagnostics && !isGen4(s.serial) && <DiagnosticsCard className="ov-diag" />}
             </div>
         </div>
     )
@@ -190,7 +191,7 @@ function MapCard() {
                 ? <MapView data={data.data} boundaries={zones} live={live} label={active?.name || t.map.floor}
                     tools={<LidarTag live={live} />} />
                 : <Empty icon={<MapIcon />} label={data.loading || maps.loading ? t.common.loading : t.map.noMap} />}
-            <Legend boundaries={zones} noGo={t.map.noGo} />
+            <Legend boundaries={zones} noGo={t.map.noGo} noGoArea={t.zones.noGoArea} />
         </Card>
     )
 }

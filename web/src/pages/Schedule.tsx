@@ -38,7 +38,7 @@ export function Schedule() {
     const maps = useMaps(s.serial)
     const mapId = activeMap(maps.data)?.id
     const bounds = useBoundaries(s.serial, mapId, s.connected)
-    const zones = useMemo(() => (bounds.data ?? []).filter((b) => b.type === 'polygon'), [bounds.data])
+    const zones = useMemo(() => (bounds.data ?? []).filter((b) => b.type === 'polygon' && b.function !== 'nogo'), [bounds.data])
     const zoneColor = (id: string) => zones.find((z) => z.id === id)?.color
 
     useEffect(() => {

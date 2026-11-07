@@ -1,5 +1,9 @@
 // Deutsch ist die Quelle; en.ts muss dieselben Schlüssel haben (Typ Dict).
+import { GEN4_CODES_DE } from './gen4codes'
+
 const de = {
+    /** Fehler- und Hinweiscodes der Gen4-Roboter */
+    gen4: GEN4_CODES_DE as Record<string, string>,
     nav: {
         overview: 'Übersicht',
         map: 'Karte',
@@ -223,6 +227,9 @@ const de = {
         unskip: 'Doch reinigen',
     },
     settings: {
+        forceFloorplan: 'Nur mit Karte reinigen',
+        robotLanguage: 'Sprache des Roboters',
+        robotSaved: 'Am Roboter gespeichert',
         title: 'Einstellungen',
         appServer: 'Serveradresse der App',
         appearance: 'Darstellung',
@@ -461,6 +468,8 @@ const de = {
         saved: 'Gespeichert',
         saveFailed: 'Speichern fehlgeschlagen',
         busySave: "Während der Reinigung nicht speicherbar",
+        noGoArea: 'Sperrfläche',
+        kind: 'Art',
         tooFewPoints: 'Zu wenige Punkte',
         selfIntersecting: 'Ränder kreuzen sich',
         tooSmall: 'Zu klein',

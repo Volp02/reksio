@@ -146,3 +146,5 @@ a.rsteps-r[aria-current="true"] .row-t { color: var(--accent-text); }
 }
 .sched-ed { scroll-margin-top: var(--s-5); }
 .field-e { margin: 0; color: var(--danger-text); font-size: var(--fs-small); }
+/* Sperrfläche (Gen4): schraffiert, gestrichelter Rand */
+.zrow-c--nogo { border-radius: 6px; border-style: dashed; background: repeating-linear-gradient(-45deg, color-mix(in oklab, var(--c) 45%, transparent) 0 2px, transparent 2px 5px); }

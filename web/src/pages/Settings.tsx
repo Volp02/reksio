@@ -1,12 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { BatteryMedium, Bot, ChevronRight, Cpu, Download, LayoutDashboard, Palette, Server, SlidersHorizontal, Smartphone } from 'lucide-react'
 import { api, apkUrl, UI_VERSION } from '../api/client'
-import { robot } from '../api/robot'
+import { isGen4, robot, type Gen4Settings } from '../api/robot'
+import { isCleaning } from '../status'
 import { useI18n, type Lang } from '../i18n'
 import { useStore } from '../state/store'
 import { setPrefs, usePrefs } from '../state/prefs'
 import { useTheme, type Density, type ThemePref } from '../ui/theme'
-import { Button, Card, InputRow, KV, Label, Segmented, Switch, Toast } from '../ui/ui'
+import { Button, Card, InputRow, KV, Label, Segmented, SelectRow, Switch, Toast } from '../ui/ui'
 import { DiagnosticsCard } from './Diagnostics'
 import { AccessCard } from './AccessCard'
 import { fmtNumber } from '../format'
@@ -31,6 +32,33 @@ export function Settings() {
         if (!s.serial || !s.connected) return
         robot.info(s.serial).then(setInfo).catch(() => undefined)
     }, [s.serial, s.connected])
+
+    // Gen4: Einstellungen am Roboter
+    const [g4, setG4] = useState<Gen4Settings>()
+    const [g4Busy, setG4Busy] = useState(false)
+    useEffect(() => {
+        setG4(undefined)
+        if (!s.serial || !s.connected || !isGen4(s.serial)) return
+        robot.gen4Settings(s.serial).then(setG4).catch(() => undefined)
+    }, [s.serial, s.connected])
+    const languageName = (code: string) => {
+        try { return new Intl.DisplayNames([locale], { type: 'language' }).of(code) ?? code } catch { return code }
+    }
+    const setOnRobot = async (patch: Partial<Gen4Settings>) => {
+        if (!s.serial || !g4) return
+        setG4Busy(true)
+        try {
+            if (patch.forceFloorplan !== undefined) await robot.setForceFloorplan(s.serial, patch.forceFloorplan)
+            if (patch.language !== undefined) await robot.setLanguage(s.serial, patch.language)
+            setG4(await robot.gen4Settings(s.serial))
+            setToast(t.settings.robotSaved)
+        } catch {
+            setToast(t.zones.saveFailed)
+        } finally {
+            setG4Busy(false)
+        }
+    }
+    const g4Locked = g4Busy || isCleaning(s.robot)
 
     const rename = async () => {
         if (!s.serial || !name?.trim()) return
@@ -100,6 +128,15 @@ export function Settings() {
                         <Button variant="primary" label={t.common.save} disabled={!name.trim()} onClick={rename} />
                     </div>
                 )}
+                {g4 && (<>
+                    <Switch label={t.settings.forceFloorplan} checked={g4.forceFloorplan}
+                        onChange={(v) => { if (!g4Locked) setOnRobot({ forceFloorplan: v }) }} />
+                    {g4.languages.length > 0 && (
+                        <SelectRow<string> label={t.settings.robotLanguage} value={g4.language}
+                            options={g4.languages.map((l) => ({ value: l, label: languageName(l) }))}
+                            onChange={(v) => { if (!g4Locked && v !== g4.language) setOnRobot({ language: v }) }} />
+                    )}
+                </>)}
                 <KV rows={[
                     [t.settings.model, info?.model ?? s.robot?.meta?.modelName ?? (summary?.type === 'neato.gen4' ? 'D8–D10' : none)],
                     [t.settings.serial, <span key="s" className="mono wrap">{summary?.label_serial ?? s.serial ?? none}</span>],
@@ -107,7 +144,7 @@ export function Settings() {
                 ]} />
             </Card>
 
-            <DiagnosticsCard />
+            {!isGen4(s.serial) && <DiagnosticsCard />}
             <Toast text={toast} onClose={() => setToast(undefined)} />
 
             <Card icon={<Server />} title={t.settings.server}>
