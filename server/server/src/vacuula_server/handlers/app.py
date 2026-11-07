@@ -16,6 +16,7 @@ import json
 import queue
 import os
 from vacuula_server.gen4.handlers import robot_send_request
+from vacuula_server.gen4.app import demote_floorplan
 from vacuula_server import boundary_backup, cleaning_log, zone_queue
 from vacuula_server.handlers.app_download import apk_info
 from vacuula_server.server_tz import server_timezone, utc_offset_minutes
@@ -107,7 +108,9 @@ def get_map(req: RouterHandler, serial: str, map_id: str) -> None:
     req.send_ok(data)
 
 def post_map(req: RouterHandler, serial: str, map_id: str) -> None:
-    """POST /robot/<serial>/maps/<map_id> - update map data"""
+    """POST /robot/<serial>/maps/<map_id> - update map data
+
+    Gen4: `enabled` = vom Roboter verwendet (promoted). Verwenden geht über /promote, hier wird nur abgeschaltet."""
     if not (data := req.read_json()): return
 
     name = data.get("name")
@@ -129,13 +132,35 @@ def post_map(req: RouterHandler, serial: str, map_id: str) -> None:
             .values(name=name)
         )
         session.commit()
-    
+        floorplan = session.get(FloorPlan, map_id)
+        demote = bool(floorplan and floorplan.robot == serial and floorplan.promoted and not enabled)
+
+    if demote:
+        ok, msg = demote_floorplan(serial, map_id)
+        if not ok:
+            return req.send_bad_request(msg)
+
     req.send_ok()
 
 def delete_map(req: RouterHandler, serial: str, map_id: str) -> None:
-    """DELETE /robot/<serial>/maps/<map_id> - remove a persistent map from the list (Gen3).
+    """DELETE /robot/<serial>/maps/<map_id> - remove a map from the list.
 
-    The files stay on disk; the robot no longer gets the map from /persistent_maps."""
+    Gen3: the files stay on disk; the robot no longer gets the map from /persistent_maps.
+    Gen4: the floor plan stays with its run; a promoted one is demoted on the robot first."""
+    with get_session() as session:
+        floorplan = session.get(FloorPlan, map_id)
+        gen4 = floorplan is not None and floorplan.robot == serial
+        promoted = gen4 and floorplan.promoted
+    if gen4:
+        if promoted:
+            ok, msg = demote_floorplan(serial, map_id)
+            if not ok:
+                return req.send_bad_request(msg)
+        with get_session() as session:
+            session.execute(update(FloorPlan).where(FloorPlan.id == map_id).values(in_maps_list=False))
+            session.commit()
+        return req.send_ok()
+
     with get_session() as session:
         pmap = session.get(PersistentMap, map_id)
         if pmap is None or pmap.robot != serial:

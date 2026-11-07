@@ -1,4 +1,4 @@
-"""Zeitplan des Servers (Gen3): ganze Karte oder mehrere Zonen nacheinander, zu festen Zeiten.
+"""Zeitplan des Servers (Gen3 und Gen4): ganze Karte oder mehrere Zonen nacheinander, zu festen Zeiten.
 
 Der Zeitplan des D7 kann pro Termin höchstens eine Zone. Deshalb startet der Server die Termine selbst: zur Startzeit
 ganze Karte (startCleaning, Kategorie Karte) oder die Zonen über die Zonenfolge (zone_queue). Ist Reksio dann nicht
@@ -6,6 +6,8 @@ bereit (reinigt, Fehler, Akku unter zone_queue.MIN_CHARGE, nicht verbunden), wir
 jede Minute erneut versucht, danach gilt der Termin als ausgelassen. Termine liegen in app_setting; `lastDue` verhindert,
 dass ein Termin nach einem Neustart des Servers doppelt startet. `skip` (Datum, YYYY-MM-DD) lässt genau einen Start aus
 ("Heute auslassen" in der App).
+
+Gen4 (D8–D10) reinigt mehrere Zonen selbst nacheinander: ein cleaning.start mit einem Lauf pro Zone, ohne zone_queue.
 """
 from __future__ import annotations
 
@@ -21,6 +23,7 @@ from zoneinfo import ZoneInfo
 from vacuula_server import cleaning_log, zone_queue
 from vacuula_server.db import get_session
 from vacuula_server.gen3.cloud import cloud_command
+from vacuula_server.gen4.cloud import gen4_command, is_gen4
 from vacuula_server.handlers.events import broadcast
 from vacuula_server.models.app_setting import AppSetting
 from vacuula_server.server_tz import server_timezone
@@ -144,8 +147,46 @@ def put(serial: str, plans: list[dict]) -> list[dict]:
     return get(serial)
 
 
+def _ready_gen4(serial: str) -> str | None:
+    res = gen4_command(serial, {"ability": "state.show"})
+    if not res or res.get("code") != 200:
+        return "offline"
+    st = res.get("body") or {}
+    if st.get("state") == "error" or any((e or {}).get("severity") in ("error", "critical") for e in st.get("errors") or []):
+        return "error"
+    if st.get("state") != "idle":
+        return "busy"
+    if ((st.get("details") or {}).get("charge") or 0) < zone_queue.MIN_CHARGE:
+        return "charging"
+    if not (st.get("available_commands") or {}).get("start"):
+        return "busy"
+    return None
+
+
+def _gen4_runs(plan: dict) -> list[dict]:
+    settings = {"mode": "turbo" if plan["mode"] == 2 else "eco",
+                "navigation_mode": "gentle" if plan["navigationMode"] == 2 else "normal"}
+    if not plan.get("mapId"):
+        return [{"map": None, "settings": settings}]
+    tracks = [z["id"] for z in plan["zones"]] or [None]
+    return [{"map": {"rank_id": plan["mapId"], "track_id": t, "nogo_enabled": True}, "settings": settings} for t in tracks]
+
+
+def _start_gen4(serial: str, plan: dict) -> str | None:
+    res = gen4_command(serial, {"ability": "cleaning.start", "runs": _gen4_runs(plan)}, timeout=20)
+    if (not res or res.get("code") != 200) and plan.get("mapId") and not plan["zones"]:
+        logger.warning("plan %s: map cleaning refused (%s), cleaning everything", plan["id"], (res or {}).get("code"))
+        res = gen4_command(serial, {"ability": "cleaning.start", "runs": _gen4_runs({**plan, "mapId": None})}, timeout=20)
+    if res and res.get("code") == 200:
+        cleaning_log.job_create(serial, "plan", plan["id"], plan.get("mapId"), [], status="started")
+        return None
+    return "notStarted"
+
+
 def _ready(serial: str) -> str | None:
     """Grund, warum jetzt nicht gestartet werden kann, sonst None"""
+    if is_gen4(serial):
+        return _ready_gen4(serial)
     if zone_queue.get(serial):
         return "busy"
     st = cloud_command(serial, {"cmd": "getRobotState"})
@@ -164,6 +205,8 @@ def _ready(serial: str) -> str | None:
 
 def _start(serial: str, plan: dict) -> str | None:
     """Termin starten; Rückgabe Fehlergrund oder None"""
+    if is_gen4(serial):
+        return _start_gen4(serial, plan)
     if plan["zones"]:
         q, res = zone_queue.start(serial, plan["mapId"], plan["zones"], plan["mode"], plan["navigationMode"], "plan", plan["id"])
         return None if q else ((res or {}).get("error") or "notStarted")
