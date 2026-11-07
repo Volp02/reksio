@@ -73,4 +73,14 @@ class WatcherTest {
         assertEquals(Level.WARNUNG, Watcher.hinweis("plan_skipped")?.level)
         assertEquals(null, Watcher.hinweis("telemetry"))
     }
+
+    @Test
+    fun gen4MitNamen() {
+        assertEquals("D8: Linkes Rad in der Luft", Watcher.hinweis("robot_error", code = "lw_hanging", name = "D8")?.text)
+        assertEquals(Level.WARNUNG, Watcher.hinweis("robot_error", code = "lw_hanging")?.level)
+        assertEquals("D8: Fertig", Watcher.hinweis("robot_finished", name = "D8")?.text)
+        assertEquals("Update fehlgeschlagen", Watcher.hinweis("robot_error", code = "swu_error_internal")?.text)
+        assertEquals("Neuer code", Watcher.hinweis("robot_error", code = "neuer_code")?.text)
+        assertEquals("Zonen fertig", Watcher.hinweis("zones_done", name = "D8")?.text)
+    }
 }

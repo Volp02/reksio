@@ -20,7 +20,7 @@ import java.net.URL
 /**
  * Hört im Hintergrund auf den Ereignisstrom des Servers (`/api/events`) und meldet Änderungen als Benachrichtigung:
  * Zustand und Störungen aus der Telemetrie (ESP), dazu die Hinweise des Servers (Zonen nicht gereinigt, Termin
- * ausgelassen, …). Nur lesend, es geht kein Befehl an den Roboter.
+ * ausgelassen, …) und die Meldungen von Gen4-Robotern ohne ESP (`robot_*`). Nur lesend, es geht kein Befehl an den Roboter.
  */
 class WatchService : Service() {
     private lateinit var thread: HandlerThread
@@ -126,7 +126,7 @@ class WatchService : Service() {
             "zones" -> zonen = j.optJSONObject("queue") != null
             "notice" -> {
                 val fehlend = j.optJSONArray("failed")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
-                Watcher.hinweis(j.optString("type"), fehlend)?.let { melden(nm, it) }
+                Watcher.hinweis(j.optString("type"), fehlend, j.optString("code"), j.optString("name"))?.let { melden(nm, it) }
             }
         }
     }
