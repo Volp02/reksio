@@ -4,6 +4,9 @@
 
 - **Several robots**: the robot name at the top left (on phones in the top bar) switches between robots; the choice is kept per device.
 - **Gen4 robots (D8, D9, D10)**: start, pause, stop, dock, status and battery; cleaning history with the driven path; maps from any cleaning run (Map → Maps → Add), zones and no-go lines are stored on the server and sent to the robot together with the map that is in use; several zones in one go (the robot cleans them in order itself); server schedule for whole map or zones. ESP telemetry stays Gen3-only.
+- **Gen4 no-go areas**: besides no-go lines, areas the robot leaves out (Map → Edit → No-go area, or switch a zone's type).
+- **Gen4 notifications**: the server turns the robot's own events into notices (started, paused, charging and resuming, returning, finished, errors, offline during a run); the Android app shows them with the robot's name. Error and alert codes have readable texts in the web app.
+- **Gen4 settings**: clean with map only, robot language (Settings → Robot).
 
 ## 0.2.0
 
