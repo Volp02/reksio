@@ -102,9 +102,12 @@ MDNS_HOSTNAME = "vacuula.local."
 
 class MDNSAdvertiser:
     def __init__(self) -> None:
-        self._zeroconf = Zeroconf()
-
         ip = get_host_ip()
+
+        # Only the advertised address: on a Docker host with many bridges, joining the multicast group on every
+        # interface runs into net.ipv4.igmp_max_memberships (default 20), and whether the LAN interface still gets
+        # a slot is luck. Without it nobody answers vacuula.local and Gen4 robots never start the TLS login.
+        self._zeroconf = Zeroconf(interfaces=[ip])
 
         self._info = ServiceInfo(
             SERVICE_TYPE,
