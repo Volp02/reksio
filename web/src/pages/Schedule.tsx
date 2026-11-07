@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarClock, Check, Plus, SkipForward, Trash2, Undo2, X } from 'lucide-react'
-import { api, gen3 } from '../api/client'
+import { api } from '../api/client'
+import { robot } from '../api/robot'
 import { CleaningMode, NavigationMode, type Plan, type ScheduleEvent } from '../api/types'
 import { fmtTime, fmtWhen } from '../format'
 import { fill, useI18n } from '../i18n'
@@ -49,7 +50,8 @@ export function Schedule() {
     // eigener Zeitplan des Roboters: nur zeigen, wenn dort Termine liegen (sonst starten beide)
     useEffect(() => {
         if (!s.serial || !s.connected) return
-        gen3.getSchedule(s.serial).then((r) => setRobotSchedule(r.data.events)).catch(() => undefined)
+        setRobotSchedule(undefined)
+        robot.getSchedule(s.serial).then(setRobotSchedule).catch(() => undefined)
     }, [s.serial, s.connected])
 
     // Editor auf dem Handy (unter der Liste) ins Bild holen

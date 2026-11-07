@@ -2,6 +2,8 @@ import { CleaningMode, NavigationMode } from '../api/types'
 import { useI18n } from '../i18n'
 import { setPrefs, usePrefs } from '../state/prefs'
 import { Label, Segmented } from '../ui/ui'
+import { useStore } from '../state/store'
+import { isGen4 } from '../api/robot'
 
 /** Saugstufe und Fahrweise für den nächsten Start (Übersicht und Zonen) oder eines Termins (value/onChange) */
 export function CleanModes({ value, onChange }: {
@@ -12,6 +14,8 @@ export function CleanModes({ value, onChange }: {
     const stored = usePrefs()
     const prefs = value ?? stored
     const set = onChange ?? setPrefs
+    // Gen4 kennt keine Tiefenreinigung
+    const deep = !isGen4(useStore().serial)
     return (
         <div className="ov-modes">
             <div className="field"><Label className="field-l">{t.settings.power}</Label>
@@ -22,7 +26,7 @@ export function CleanModes({ value, onChange }: {
                 <Segmented<string> label={t.settings.navigation} value={String(prefs.navigation)} onChange={(v) => set({ navigation: Number(v) })} options={[
                     { value: String(NavigationMode.NORMAL), label: t.overview.normalNav },
                     { value: String(NavigationMode.EXTRA_CARE), label: t.overview.extraCare },
-                    { value: String(NavigationMode.DEEP), label: t.overview.deep }]} />
+                    ...(deep ? [{ value: String(NavigationMode.DEEP), label: t.overview.deep }] : [])]} />
             </div>
         </div>
     )

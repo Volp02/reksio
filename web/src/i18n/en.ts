@@ -29,6 +29,7 @@ const en: Shape<Dict> = {
         toDark: 'Dark theme',
         serverUnreachable: 'Server unreachable',
         noRobot: 'No robot',
+        switchRobot: 'Switch robot',
     },
     status: {
         ready: 'Ready',
@@ -421,6 +422,9 @@ const en: Shape<Dict> = {
         exploreStart: 'Start exploring',
         exploreDock: 'Only from the base',
         exploring: 'Exploration started',
+        fromRun: 'Map from a cleaning run',
+        add: 'Add',
+        added: 'Map added',
     },
     zones: {
         clean: 'Clean',
@@ -459,6 +463,7 @@ const en: Shape<Dict> = {
         deleteConfirm: 'Delete “{name}”?',
         saved: 'Saved',
         saveFailed: 'Saving failed',
+        busySave: "Can't save while cleaning",
         tooFewPoints: 'Too few points',
         selfIntersecting: 'Edges cross',
         tooSmall: 'Too small',

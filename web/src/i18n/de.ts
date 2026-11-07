@@ -26,6 +26,7 @@ const de = {
         toDark: 'Dunkles Design',
         serverUnreachable: 'Server nicht erreichbar',
         noRobot: 'Kein Roboter',
+        switchRobot: 'Roboter wechseln',
     },
     status: {
         ready: 'Bereit',
@@ -418,6 +419,9 @@ const de = {
         exploreStart: 'Erkundung starten',
         exploreDock: 'Nur aus der Basis',
         exploring: 'Erkundung gestartet',
+        fromRun: 'Karte aus einer Reinigung',
+        add: 'Übernehmen',
+        added: 'Karte übernommen',
     },
     zones: {
         clean: 'Reinigen',
@@ -456,6 +460,7 @@ const de = {
         deleteConfirm: '„{name}“ löschen?',
         saved: 'Gespeichert',
         saveFailed: 'Speichern fehlgeschlagen',
+        busySave: "Während der Reinigung nicht speicherbar",
         tooFewPoints: 'Zu wenige Punkte',
         selfIntersecting: 'Ränder kreuzen sich',
         tooSmall: 'Zu klein',

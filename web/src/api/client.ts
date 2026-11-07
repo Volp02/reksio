@@ -1,4 +1,4 @@
-import type { Boundary, BoundaryBackup, GeneralInfo, Incident, Job, MapData, Plan, Pose, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry, ZoneHistory, ZoneQueue } from './types'
+import type { Boundary, BoundaryBackup, Gen4Boundary, GeneralInfo, Incident, Job, MapData, Plan, Pose, PersistentMap, Robots, RobotStateData, RunSummary, ScheduleEvent, ServerInfo, Telemetry, ZoneHistory, ZoneQueue } from './types'
 import { CleaningCategory, type CleaningMode, type NavigationMode } from './types'
 
 // Relativ, damit die App auch hinter einem Präfix (HA-Ingress) läuft
@@ -96,6 +96,17 @@ export const api = {
     lidar: (serial: string) => request<{ until: number; scanning: boolean }>('POST', `/robot/${serial}/lidar`),
     command: <T = unknown>(serial: string, cmd: string, params?: object) =>
         request<T>('POST', `/robot/${serial}/command`, params ? { cmd, params } : { cmd }),
+    /** Gen4: Befehl („ability“) mit Parametern auf oberster Ebene; Antwort `{ code, body }` */
+    ability: <T = unknown>(serial: string, ability: string, params?: object) =>
+        request<{ code: number; body: T }>('POST', `/robot/${serial}/command`, { ability, ...params }),
+    rename: (serial: string, name: string) => request<void>('POST', `/robot/${serial}`, { name }),
+    /** Gen4: Zonen und No-Go-Linien liegen im Server, der Roboter bekommt sie mit der Karte (promote) */
+    gen4Boundaries: (serial: string, mapId: string) => request<Gen4Boundary[]>('GET', `/robot/${serial}/maps/${mapId}/boundaries`),
+    setGen4Boundaries: (serial: string, mapId: string, list: Gen4Boundary[]) => request<void>('POST', `/robot/${serial}/maps/${mapId}/boundaries`, list),
+    /** Gen4: Karte samt Zonen an den Roboter schicken und verwenden */
+    promote: (serial: string, mapId: string) => request<void>('POST', `/robot/${serial}/maps/${mapId}/promote`),
+    /** Gen4: Bodenkarte einer Reinigung in die Kartenliste aufnehmen */
+    useMap: (serial: string, mapId: string) => request<void>('POST', `/robot/${serial}/maps/${mapId}/use`),
 }
 
 /** ESP32-Bridge (OpenNeato) über den Server */

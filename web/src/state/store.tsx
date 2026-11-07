@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { API, api, gen3 } from '../api/client'
+import { API, api } from '../api/client'
+import { fromGen4State, robot as robotApi, setRobots as setRobotTypes } from '../api/robot'
 import type { LidarScan, Pose, Robots, RobotStateData, ServerInfo, Telemetry, ZoneQueue } from '../api/types'
 
 const HISTORY_S = 3 * 3600
@@ -11,6 +12,8 @@ export interface Store {
     serverError: boolean
     robots?: Robots
     serial?: string
+    /** anderen Roboter anzeigen (bleibt pro Gerät gespeichert) */
+    select: (serial: string) => void
     name: string
     connected: boolean
     robot?: RobotStateData
@@ -43,7 +46,12 @@ export interface Notice { type: string; ts: number; reason?: string | null; fail
 const Ctx = createContext<Store | null>(null)
 
 /** Cloud-Ereignis vom Roboter, durchgereicht über /api/robot/<serial>/connect */
-interface RobotEvent { serial: string; data?: { type?: string; eventId?: string; data?: RobotStateData } }
+interface RobotEvent {
+    serial: string
+    data?: { type?: string; eventId?: string; data?: RobotStateData; to?: { service?: string }; body?: Parameters<typeof fromGen4State>[0] }
+}
+
+const ROBOT_KEY = 'reksio.robot'
 
 export function StoreProvider({ children }: { children: ReactNode }) {
     const [server, setServer] = useState<ServerInfo>()
@@ -63,11 +71,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const [now, setNow] = useState(() => Date.now() / 1000)
     const [reload, setReload] = useState(0)
 
-    // einziger Gen3-Roboter (Reksio); Gen4 wird nicht unterstützt
-    const serial = useMemo(
-        () => robots && Object.entries(robots).find(([, r]) => r.type === 'neato.gen3')?.[0],
-        [robots],
-    )
+    // gewählter Roboter; sonst der erste verbundene, sonst der erste
+    const [chosen, setChosen] = useState(() => localStorage.getItem(ROBOT_KEY) ?? undefined)
+    const serial = useMemo(() => {
+        if (!robots) return undefined
+        if (chosen && robots[chosen]) return chosen
+        const list = Object.entries(robots)
+        return (list.find(([, r]) => r.connected) ?? list[0])?.[0]
+    }, [robots, chosen])
+    setRobotTypes(robots)
+    const select = useCallback((s: string) => { localStorage.setItem(ROBOT_KEY, s); setChosen(s) }, [])
+
+    // Wechsel: Stand des vorigen Roboters verwerfen
+    useEffect(() => {
+        setRobot(undefined); setRobotAt(undefined); setTelemetry(undefined); setHistory([]); setPose(undefined); setPoses([])
+        setNotice(undefined); setZoneQueue(undefined); setLidarOn(false)
+    }, [serial])
     const serialRef = useRef(serial)
     serialRef.current = serial
     const connected = !!(serial && robots?.[serial]?.connected)
@@ -129,7 +148,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const s = serialRef.current
         if (!s) return
         try {
-            const state = await gen3.getRobotState(s)
+            const state = await robotApi.getState(s)
+            if (s !== serialRef.current) return
             setRobot(state)
             setRobotAt(Date.now() / 1000)
         } catch {
@@ -146,7 +166,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         es.onmessage = (e) => {
             const ev = JSON.parse(e.data) as RobotEvent
             const d = ev.data
-            if (d?.data && (d.type === 'state' || d.eventId === '77')) {
+            if (d?.type === 'event' && d.to?.service === 'peer.state' && d.body) {
+                setRobot(fromGen4State(d.body))
+                setRobotAt(Date.now() / 1000)
+            } else if (d?.data && (d.type === 'state' || d.eventId === '77')) {
                 setRobot((cur) => ({ ...cur, ...d.data } as RobotStateData))
                 setRobotAt(Date.now() / 1000)
             }
@@ -180,7 +203,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }, [lidarOn, pose, now])
 
     const value: Store = {
-        server, serverError, robots, serial,
+        server, serverError, robots, serial, select,
         name: (serial && robots?.[serial]?.name) || 'Reksio',
         connected, robot, robotAt, telemetry, history, pose, poses, notice, zoneQueue, plansAt, now,
         lidarOn, setLidarOn, lidar: lidarOn ? lidar : undefined,

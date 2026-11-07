@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { api, esp, gen3 } from '../api/client'
+import { api, esp } from '../api/client'
+import { isGen4, robot } from '../api/robot'
+import { idToTs } from '../format'
 import { store, stored } from './persist'
 import type { Boundary, EspSession, Incident, Job, MapData, PersistentMap, Pose, RunSummary, ZoneHistory } from '../api/types'
 
@@ -44,15 +46,15 @@ function useLoad<T>(key: string | undefined, load: () => Promise<T>, version = 0
 }
 
 export function useMaps(serial: string | undefined, version = 0) {
-    return useLoad<PersistentMap[]>(serial && `maps:${serial}`, () => api.maps(serial!), version)
+    return useLoad<PersistentMap[]>(serial && `maps:${serial}`, () => robot.maps(serial!), version)
 }
 
 export function useMapData(serial: string | undefined, id: string | undefined) {
-    return useLoad<MapData>(serial && id ? `map:${serial}:${id}` : undefined, () => api.map(serial!, id!))
+    return useLoad<MapData>(serial && id ? `map:${serial}:${id}` : undefined, () => robot.map(serial!, id!))
 }
 
 export function useRuns(serial: string | undefined, version = 0) {
-    return useLoad<RunSummary[]>(serial && `runs:${serial}`, () => api.runs(serial!), version)
+    return useLoad<RunSummary[]>(serial && `runs:${serial}`, () => robot.runs(serial!), version)
 }
 
 export function useJobs(serial: string | undefined, version = 0) {
@@ -66,7 +68,7 @@ export function useIncidents(serial: string | undefined, since: number | undefin
 }
 
 export function useRunData(serial: string | undefined, id: string | undefined) {
-    return useLoad<MapData>(serial && id ? `run:${serial}:${id}` : undefined, () => api.run(serial!, id!))
+    return useLoad<MapData>(serial && id ? `run:${serial}:${id}` : undefined, () => robot.run(serial!, id!))
 }
 
 const RUN_MAX_S = 6 * 3600
@@ -85,10 +87,11 @@ export function useRunPath(serial: string | undefined, start: number | undefined
     })
 }
 
-/** Zonen und No-Go-Linien einer Karte; kommen vom Roboter, daher nur wenn er verbunden ist */
+/** Zonen und No-Go-Linien einer Karte; Gen3 liefert sie nur, wenn er verbunden ist, Gen4 aus dem Server */
 export function useBoundaries(serial: string | undefined, mapId: string | undefined, connected: boolean, version = 0) {
-    return useLoad<Boundary[]>(serial && mapId && connected ? `bounds:${serial}:${mapId}` : undefined,
-        () => gen3.getMapBoundaries(serial!, mapId!).then((r) => r.data.boundaries ?? []), version)
+    const ok = connected || robot.boundariesOffline(serial)
+    return useLoad<Boundary[]>(serial && mapId && ok ? `bounds:${serial}:${mapId}` : undefined,
+        () => robot.getBoundaries(serial!, mapId!), version)
 }
 
 export function useZoneHistory(serial: string | undefined, mapId: string | undefined, version = 0) {
@@ -99,16 +102,22 @@ export function useZoneHistory(serial: string | undefined, mapId: string | undef
 /** Karte, auf der Reksio fährt: die aktivierte, sonst die neueste */
 export function activeMap(maps: PersistentMap[] | undefined): PersistentMap | undefined {
     if (!maps?.length) return undefined
-    return maps.find((m) => m.enabled) ?? [...maps].sort((a, b) => b.id.localeCompare(a.id))[0]
+    return maps.find((m) => m.enabled) ?? [...maps].sort((a, b) => (b.created ?? b.id).localeCompare(a.created ?? a.id))[0]
+}
+
+/** Startzeit einer Reinigung: Gen3-IDs sind die Startzeit, Gen4 hat UUIDs */
+export function runTs(r: RunSummary | undefined): number | undefined {
+    if (!r) return undefined
+    return idToTs(r.id) ?? (r.run?.start_at ? idToTs(r.run.start_at) : undefined)
 }
 
 export function sortRuns(runs: RunSummary[] | undefined): RunSummary[] {
-    return [...(runs ?? [])].sort((a, b) => b.id.localeCompare(a.id))
+    return [...(runs ?? [])].sort((a, b) => (runTs(b) ?? 0) - (runTs(a) ?? 0))
 }
 
-/** Fahrten-Zusammenfassungen des ESP (Dauer, Fläche, Strecke, Akku) */
-export function useEspSessions(version = 0) {
-    return useLoad<EspSession[]>('esp-history', () => esp.get<EspSession[]>('history'), version)
+/** Fahrten-Zusammenfassungen des ESP (Dauer, Fläche, Strecke, Akku); der ESP passt nur an Gen3-Roboter */
+export function useEspSessions(serial: string | undefined, version = 0) {
+    return useLoad<EspSession[]>(serial && !isGen4(serial) ? 'esp-history' : undefined, () => esp.get<EspSession[]>('history'), version)
 }
 
 /** ESP-Sitzung zu einer Reinigung: Start innerhalb von 5 min um die Run-ID (= Startzeit) */

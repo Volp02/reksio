@@ -1,12 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { BatteryMedium, Bot, ChevronRight, Cpu, Download, LayoutDashboard, Palette, Server, SlidersHorizontal, Smartphone } from 'lucide-react'
-import { apkUrl, gen3, UI_VERSION } from '../api/client'
-import type { GeneralInfo } from '../api/types'
+import { api, apkUrl, UI_VERSION } from '../api/client'
+import { robot } from '../api/robot'
 import { useI18n, type Lang } from '../i18n'
 import { useStore } from '../state/store'
 import { setPrefs, usePrefs } from '../state/prefs'
 import { useTheme, type Density, type ThemePref } from '../ui/theme'
-import { Card, KV, Label, Segmented, Switch } from '../ui/ui'
+import { Button, Card, InputRow, KV, Label, Segmented, Switch, Toast } from '../ui/ui'
 import { DiagnosticsCard } from './Diagnostics'
 import { AccessCard } from './AccessCard'
 import { fmtNumber } from '../format'
@@ -20,12 +20,28 @@ export function Settings() {
     const theme = useTheme()
     const prefs = usePrefs()
     const s = useStore()
-    const [info, setInfo] = useState<GeneralInfo>()
+    const [info, setInfo] = useState<{ model?: string; firmware?: string }>()
+    const [name, setName] = useState<string>()
+    const [toast, setToast] = useState<string>()
+    const summary = s.serial ? s.robots?.[s.serial] : undefined
 
     useEffect(() => {
+        setInfo(undefined)
+        setName(undefined)
         if (!s.serial || !s.connected) return
-        gen3.getGeneralInfo(s.serial).then((r) => setInfo(r.data)).catch(() => undefined)
+        robot.info(s.serial).then(setInfo).catch(() => undefined)
     }, [s.serial, s.connected])
+
+    const rename = async () => {
+        if (!s.serial || !name?.trim()) return
+        try {
+            await api.rename(s.serial, name.trim())
+            setName(undefined)
+            setToast(t.zones.saved)
+        } catch {
+            setToast(t.zones.saveFailed)
+        }
+    }
 
     const none = t.common.none
 
@@ -77,15 +93,22 @@ export function Settings() {
             )}
 
             <Card icon={<Bot />} title={t.settings.robot}>
+                <InputRow label={t.settings.name} value={name ?? s.name} onChange={(v) => setName(v.slice(0, 40))} />
+                {name !== undefined && name.trim() !== s.name && (
+                    <div className="actions">
+                        <Button label={t.common.discard} onClick={() => setName(undefined)} />
+                        <Button variant="primary" label={t.common.save} disabled={!name.trim()} onClick={rename} />
+                    </div>
+                )}
                 <KV rows={[
-                    [t.settings.name, <Label key="n">{s.name}</Label>],
-                    [t.settings.model, info?.model ?? s.robot?.meta?.modelName ?? none],
-                    [t.settings.serial, <span key="s" className="mono wrap">{s.serial ?? none}</span>],
+                    [t.settings.model, info?.model ?? s.robot?.meta?.modelName ?? (summary?.type === 'neato.gen4' ? 'D8–D10' : none)],
+                    [t.settings.serial, <span key="s" className="mono wrap">{summary?.label_serial ?? s.serial ?? none}</span>],
                     [t.settings.firmware, <span key="f" className="mono">{info?.firmware ?? s.robot?.meta?.firmware ?? none}</span>],
                 ]} />
             </Card>
 
             <DiagnosticsCard />
+            <Toast text={toast} onClose={() => setToast(undefined)} />
 
             <Card icon={<Server />} title={t.settings.server}>
                 <KV rows={[

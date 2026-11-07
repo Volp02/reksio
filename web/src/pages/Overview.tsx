@@ -2,14 +2,15 @@ import { useState, type ReactNode } from 'react'
 import {
     BatteryCharging, Shapes, Trash2, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, History, House, Map as MapIcon, Pause, Play, Square, TriangleAlert,
 } from 'lucide-react'
-import { esp, gen3 } from '../api/client'
+import { esp } from '../api/client'
+import { robot } from '../api/robot'
 import { CleaningCategory, CleaningMode, NavigationMode } from '../api/types'
 import { fill, useI18n } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
-import { activeMap, sessionFor, sortRuns, useBoundaries, useEspSessions, useMapData, useMaps, useRuns } from '../state/data'
+import { activeMap, runTs, sessionFor, sortRuns, useBoundaries, useEspSessions, useMapData, useMaps, useRuns } from '../state/data'
 import { runStatsShort } from './runStats'
 import { batteryPercent, batteryTone, cleaningSince, dischargeRate, espProblem, isCleaning, problemText, robotStatus } from '../status'
-import { fmtDuration, fmtNumber, fmtTime, fmtWhen, idToTs } from '../format'
+import { fmtDuration, fmtNumber, fmtTime, fmtWhen } from '../format'
 import { MapView } from '../map/MapView'
 import { Legend } from '../map/Legend'
 import { useLive } from '../map/useLive'
@@ -53,10 +54,10 @@ function ControlCard() {
     const mapId = activeMap(useMaps(s.serial).data)?.id
 
     const primary = av?.pause
-        ? { label: t.actions.pause, icon: <Pause />, run: () => gen3.pause(s.serial!) }
+        ? { label: t.actions.pause, icon: <Pause />, run: () => robot.pause(s.serial!) }
         : av?.resume
-            ? { label: t.actions.resume, icon: <Play />, run: () => gen3.resume(s.serial!) }
-            : { label: t.actions.start, icon: <Play />, run: () => { const p = getPrefs(); return gen3.startWhole(s.serial!, mapId, p.mode, p.navigation) }, disabled: !av?.start }
+            ? { label: t.actions.resume, icon: <Play />, run: () => robot.resume(s.serial!) }
+            : { label: t.actions.start, icon: <Play />, run: () => { const p = getPrefs(); return robot.startWhole(s.serial!, mapId, p.mode, p.navigation) }, disabled: !av?.start }
 
     const send = async (cmd: Cmd, run: () => Promise<unknown>) => {
         setBusy(cmd)
@@ -74,12 +75,12 @@ function ControlCard() {
     const cloud = r?.error ? problemText(t, r.error) : r?.alert ? problemText(t, r.alert) : undefined
     const espShown = espP && espP.code !== dismissed ? espP : undefined
     const problem = cloud
-        ? { text: cloud, tone: r?.error ? 'danger' : 'warn', dismiss: r?.error ? undefined : () => gen3.dismissAlert(s.serial!) }
+        ? { text: cloud, tone: r?.error ? 'danger' : 'warn', dismiss: r?.error || !robot.canDismiss(s.serial) ? undefined : () => robot.dismissAlert(s.serial!) }
         : espShown
             ? { text: espShown.text, tone: espShown.kind === 'error' ? 'danger' : 'warn', dismiss: async () => { await esp.post('clear-errors'); setDismissed(espShown.code) } }
             : undefined
     const since = isCleaning(r) ? cleaningSince(s.history) : undefined
-    const mode = r && isCleaning(r) ? modeLabel(t, r.cleaning.category, r.cleaning.mode, r.cleaning.navigationMode) : undefined
+    const mode = r?.cleaning && isCleaning(r) ? modeLabel(t, r.cleaning.category, r.cleaning.mode, r.cleaning.navigationMode) : undefined
 
     return (
         <Card className="ov-control">
@@ -102,9 +103,9 @@ function ControlCard() {
                     loading={busy === 'stop'} disabled={!av?.stop || (!!busy && busy !== 'stop')} onClick={() => setConfirmStop(true)} />
                 <Button grow icon={<House />} label={busy === 'dock' ? t.actions.sending : t.actions.dock}
                     loading={busy === 'dock'} disabled={!av?.goToBase || (!!busy && busy !== 'dock')}
-                    onClick={() => send('dock', () => gen3.sendToBase(s.serial!))} />
+                    onClick={() => send('dock', () => robot.sendToBase(s.serial!))} />
             </div>
-            {!mode && <CleanModes />}
+            {!(r && isCleaning(r)) && <CleanModes />}
             {s.zoneQueue && <a className="ov-queue" href="#/map"><Shapes /><Label>{fill(t.zones.step, { i: Math.min(s.zoneQueue.index + 1, s.zoneQueue.zones.length), n: s.zoneQueue.zones.length })
                 + (s.zoneQueue.zones[s.zoneQueue.index]?.name ? ` · ${s.zoneQueue.zones[s.zoneQueue.index].name}` : '')}</Label></a>}
             {(mode || since) && (
@@ -115,7 +116,7 @@ function ControlCard() {
             )}
             <Confirm open={confirmStop} title={t.actions.stopConfirmTitle} confirmLabel={t.actions.stopConfirm} cancelLabel={t.common.cancel}
                 onCancel={() => setConfirmStop(false)}
-                onConfirm={() => { setConfirmStop(false); send('stop', () => gen3.stop(s.serial!)) }} />
+                onConfirm={() => { setConfirmStop(false); send('stop', () => robot.stop(s.serial!)) }} />
             <Toast text={toast} onClose={() => setToast(undefined)} />
         </Card>
     )
@@ -155,12 +156,12 @@ function BatteryCard() {
             <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={t.battery.title}>
                 <i style={{ width: `${pct ?? 0}%` }} />
             </div>
-            <BatteryChart history={s.history} label={t.battery.history} />
-            <KV rows={[
+            {tel && <BatteryChart history={s.history} label={t.battery.history} />}
+            {tel && <KV rows={[
                 [t.battery.voltage, a ? <Value value={fmtNumber(locale, a.batteryVoltageV, 1)} unit="V" /> : none],
                 [t.battery.current, a ? <Value value={fmtNumber(locale, a.batteryCurrentMA)} unit="mA" /> : none],
                 [t.battery.temperature, a ? <Value value={fmtNumber(locale, a.batteryTemperatureC, 1)} unit="°C" /> : none],
-            ]} />
+            ]} />}
         </Card>
     )
 }
@@ -199,7 +200,7 @@ function RunsCard() {
     const s = useStore()
     const runs = useRuns(s.serial)
     const maps = useMaps(s.serial)
-    const sessions = useEspSessions()
+    const sessions = useEspSessions(s.serial)
     const list = sortRuns(runs.data).slice(0, 3)
     const mapName = (id: string | null) => maps.data?.find((m) => m.id === id)?.name
     return (
@@ -210,7 +211,7 @@ function RunsCard() {
                 : (
                     <ul className="rows">
                         {list.map((r) => {
-                            const ts = idToTs(r.id)
+                            const ts = runTs(r)
                             return (
                                 <li key={r.id}>
                                     <a className="row" href={`#/runs/${encodeURIComponent(r.id)}`}>

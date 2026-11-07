@@ -4,6 +4,7 @@ import type { Dict } from '../i18n/de'
 import { fill } from '../i18n'
 import { fmtDuration, fmtNumber, fmtTime, idToTs } from '../format'
 import { Label } from '../ui/ui'
+import { runTs } from '../state/data'
 
 /** Eintrag im Verlauf: einzelne Reinigung oder Auftrag mit mehreren Zonen (Zeitplan, Zonenfolge) */
 export type Entry =
@@ -23,7 +24,7 @@ export function historyEntries(runs: RunSummary[], jobs: Job[]): Entry[] {
     const isGroup = (j: Job) => j.zones.length > 1
     const entries: Entry[] = []
     for (const r of runs) {
-        const ts = idToTs(r.id) ?? 0
+        const ts = runTs(r) ?? 0
         const job = byRun.get(r.id) ?? jobs.find((j) => !j.zones.length && ts >= j.started - 30 && ts <= j.started + 120)
         if (job && isGroup(job)) {
             grouped.set(job.id, [...(grouped.get(job.id) ?? []), r])

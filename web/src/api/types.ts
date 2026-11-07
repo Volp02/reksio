@@ -15,6 +15,8 @@ export interface RobotSummary {
     connected: boolean
     name: string
     installed_with?: string
+    /** Gen4: Seriennummer auf dem Typenschild */
+    label_serial?: string
 }
 export type Robots = Record<string, RobotSummary>
 
@@ -47,7 +49,8 @@ export interface RobotStateData {
     action: RobotAction
     error: string | null
     alert: string | null
-    cleaning: {
+    /** fehlt bei Gen4 */
+    cleaning?: {
         category: CleaningCategory
         mode: CleaningMode
         modifier: number
@@ -148,7 +151,9 @@ export interface PersistentMap {
     name: string
     enabled: boolean
     in_maps_list: boolean
-    base: [number, number]
+    base: [number, number] | [number, number, number]
+    /** Gen4: Erstellt (ISO); bei Gen3 ist die ID die Zeit */
+    created?: string
 }
 
 /** Run-Daten des Roboters (gekürzt auf das, was die App nutzt) */
@@ -184,6 +189,10 @@ export interface MapData {
     legend: Record<string, string>
     rle: [number, number][]
     dock?: { pixel_x: number; pixel_y: number }
+    /** Gen4: Ursprung (mm) und Auflösung (mm/px) der Karte, Basis in mm */
+    metadata?: { origin_x: number; origin_y: number; resolution: number }
+    downsample?: number
+    base?: [number, number, number]
 }
 
 export interface ScheduleEvent {
@@ -203,6 +212,13 @@ export interface Boundary {
     enabled?: boolean
     vertices: [number, number][]
     relevancy?: [number, number]
+    /** Gen4: Reinigungszone oder Sperrbereich */
+    function?: 'cleaning' | 'nogo'
+}
+
+export interface Gen4Boundary {
+    id: string; name: string; color: string; type: 'polygon' | 'polyline'
+    vertices: [number, number][]; enabled: boolean; function: 'cleaning' | 'nogo'
 }
 
 /** Zonen nacheinander reinigen: Warteschlange im Server */

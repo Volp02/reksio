@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Bot, CalendarClock, ChevronLeft, Cpu, WifiOff, Download, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Smartphone, Sun, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Bot, CalendarClock, Check, ChevronDown, ChevronLeft, Cpu, WifiOff, Download, History, LayoutDashboard, Map as MapIcon, Moon, RefreshCw, Settings, Smartphone, Sun, X } from 'lucide-react'
 import { useI18n, fill } from '../i18n'
 import { isFresh, TELEMETRY_STALE_S, useStore } from '../state/store'
 import { espProblem, robotStatus } from '../status'
@@ -37,6 +37,51 @@ function AppHint() {
             <Label className="apphint-t">{title}</Label>
             <a className="btn btn--primary btn--s" href={apkUrl(store.server)} onClick={close} aria-label={t.app.download} title={t.app.download}><Download /><Label>{t.app.download}</Label></a>
             <IconButton size="s" icon={<X />} label={t.app.close} onClick={close} />
+        </div>
+    )
+}
+
+/** Name und Logo; bei mehreren Robotern zugleich die Auswahl */
+function Brand() {
+    const { t } = useI18n()
+    const store = useStore()
+    const [open, setOpen] = useState(false)
+    const ref = useRef<HTMLDivElement>(null)
+    const list = Object.entries(store.robots ?? {})
+    useEffect(() => {
+        if (!open) return
+        const close = (e: Event) => { if (!ref.current?.contains(e.target as Node)) setOpen(false) }
+        const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+        document.addEventListener('pointerdown', close)
+        document.addEventListener('keydown', esc)
+        return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', esc) }
+    }, [open])
+    if (list.length < 2) {
+        return <a className="brand" href="#/"><span className="logo"><Bot /></span><Label className="brand-n">{store.name}</Label></a>
+    }
+    return (
+        <div className="brand-sw" ref={ref}>
+            <button type="button" className="brand" aria-haspopup="menu" aria-expanded={open} title={t.common.switchRobot}
+                onClick={() => setOpen((o) => !o)}>
+                <span className="logo"><Bot /></span><Label className="brand-n">{store.name}</Label><ChevronDown className="brand-c" />
+            </button>
+            {open && (
+                <ul className="brand-menu" role="menu" aria-label={t.common.switchRobot}>
+                    {list.map(([serial, r]) => (
+                        <li key={serial} role="none">
+                            <button type="button" role="menuitemradio" aria-checked={serial === store.serial}
+                                onClick={() => { store.select(serial); setOpen(false) }}>
+                                <span className={`brand-dot${r.connected ? ' is-on' : ''}`} title={r.connected ? t.common.connected : t.common.offline} />
+                                <span className="brand-mi">
+                                    <Label className="brand-mn">{r.name}</Label>
+                                    <Label className="brand-ms">{r.type === 'neato.gen4' ? 'D8–D10' : 'D3–D7'}</Label>
+                                </span>
+                                {serial === store.serial && <Check className="brand-ok" />}
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     )
 }
@@ -80,7 +125,7 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
     return (
         <div className="app" data-route={route}>
             <aside className="side">
-                <a className="brand" href="#/"><span className="logo"><Bot /></span><Label className="brand-n">{store.name}</Label></a>
+                <Brand />
                 <nav className="side-nav">
                     {NAV.map((r) => (
                         <a key={r} href={`#/${r === 'overview' ? '' : r}`} className="nav-item" aria-current={route === r ? 'page' : undefined} title={t.nav[r]}>
@@ -100,7 +145,7 @@ export function Shell({ route, sub, children }: { route: Route; sub?: { title: s
             </aside>
 
             <header className="topbar">
-                <a className="brand" href="#/"><span className="logo"><Bot /></span><Label className="brand-n">{store.name}</Label></a>
+                <Brand />
                 <Pill tone={status.tone} label={status.label} />
                 {themeBtn}
                 {settingsBtn}

@@ -3,7 +3,7 @@ import { ChevronLeft, History, Route } from 'lucide-react'
 import type { Job, MapData, Pose, RunSummary } from '../api/types'
 import { fill, useI18n } from '../i18n'
 import { useStore } from '../state/store'
-import { sessionFor, useBoundaries, useEspSessions, useIncidents, useJobs, useMapData, useMaps, useRunData, useRunPath, useRuns } from '../state/data'
+import { runTs, sessionFor, useBoundaries, useEspSessions, useIncidents, useJobs, useMapData, useMaps, useRunData, useRunPath, useRuns } from '../state/data'
 import { robotReportRows, runStatsRows, runStatsShort } from './runStats'
 import { historyEntries, IncidentList, jobEnd, runArea, ZoneSteps, type Entry } from './runHistory'
 import { fmtDuration, fmtNumber, fmtWhen, idToTs } from '../format'
@@ -40,8 +40,7 @@ export function Runs({ selected }: { selected?: string }) {
     const runs = useRuns(s.serial, version)
     const jobs = useJobs(s.serial, version)
     const maps = useMaps(s.serial)
-    const sessions = useEspSessions()
-    const sessionOf = (id: string) => sessionFor(sessions.data, idToTs(id))
+    const sessions = useEspSessions(s.serial)
     const entries = useMemo(() => historyEntries(runs.data ?? [], jobs.data ?? []), [runs.data, jobs.data])
     const current = selected ?? entries[0]?.id
     const group = entries.find((e): e is Extract<Entry, { kind: 'job' }> => e.kind === 'job'
@@ -54,7 +53,7 @@ export function Runs({ selected }: { selected?: string }) {
     if (!entries.length) return <Card><Empty icon={<History />} label={runs.loading || jobs.loading ? t.common.loading : t.runs.empty} /></Card>
 
     const runRow = (e: Extract<Entry, { kind: 'run' }>) => {
-        const sub = [sourceLabel(e.job), mapName(e.run.persistent_map), runStatsShort(locale, sessionOf(e.id), e.run)].filter(Boolean).join(' · ')
+        const sub = [sourceLabel(e.job), mapName(e.run.persistent_map), runStatsShort(locale, sessionFor(sessions.data, e.ts), e.run)].filter(Boolean).join(' · ')
         return (
             <li key={e.id}>
                 <a className="row" href={`#/runs/${encodeURIComponent(e.id)}`} aria-current={e.id === current ? 'true' : undefined}>
@@ -89,6 +88,7 @@ export function Runs({ selected }: { selected?: string }) {
     }
 
     const entry = entries.find((e) => e.id === current)
+    const detailRun = entry?.kind === 'run' ? entry.run : group?.runs.find((r) => r.id === current)
     return (
         <div className={`runs${selected ? ' has-detail' : ''}`}>
             <Card className="runs-list">
@@ -96,7 +96,7 @@ export function Runs({ selected }: { selected?: string }) {
             </Card>
             {entry?.kind === 'job'
                 ? <JobDetail job={entry.job} runs={entry.runs} title={when(entry.ts)} />
-                : current && <RunDetail id={current} title={when(idToTs(current), current)} run={entry?.kind === 'run' ? entry.run : group?.runs.find((r) => r.id === current)}
+                : current && <RunDetail id={current} title={when(runTs(detailRun) ?? idToTs(current), current)} run={detailRun}
                     partOf={group && { href: `#/runs/${encodeURIComponent(group.id)}`, label: [sourceLabel(group.job), when(group.ts)].filter(Boolean).join(' · ') }} />}
         </div>
     )
@@ -113,9 +113,9 @@ function RunDetail({ id, title, run, partOf }: { id: string; title: string; run?
     const data = useRunData(s.serial, id)
     // jede Reinigung hat eine Bodenkarte mit derselben ID und demselben Raster
     const floor = useMapData(s.serial, id)
-    const sessions = useEspSessions()
-    const session = sessionFor(sessions.data, idToTs(id))
-    const start = idToTs(id)
+    const sessions = useEspSessions(s.serial)
+    const start = runTs(run) ?? idToTs(id)
+    const session = sessionFor(sessions.data, start)
     const end = (run?.run?.end_at && idToTs(run.run.end_at)) || session?.summary?.time
     const path = useRunPath(s.serial, start, end)
     const incidents = useIncidents(s.serial, start, end ?? (start && start + 3 * 3600))

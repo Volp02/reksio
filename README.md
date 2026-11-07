@@ -23,7 +23,7 @@ A self-hosted server, web app and Android app for Neato robot vacuums: maps, zon
 
 Neato shut down its cloud, and with it the app. [Vacuula](https://github.com/vacuula/vacuula) brings the robots back by replacing the cloud server. Reksio builds on it with a new web app, a native Android app and an optional ESP32 on the robot's debug port for detailed telemetry.
 
-Tested on the **Botvac D7**. Other robots supported by Vacuula should work as well; the ESP32 telemetry needs a D3 to D7.
+Tested on the **Botvac D7** and **D8**, also both on one server. Other robots supported by Vacuula should work as well; the ESP32 telemetry needs a D3 to D7.
 
 ## Features
 
@@ -88,7 +88,7 @@ Tested on the **Botvac D7**. Other robots supported by Vacuula should work as we
 
 | | What | Notes |
 |---|---|---|
-| **Robot** | Neato Botvac | D7 tested. See [Vacuula](https://github.com/vacuula/vacuula#readme) for supported models. |
+| **Robot** | Neato Botvac | D7 and D8 tested. See [Vacuula](https://github.com/vacuula/vacuula#readme) for supported models. |
 | **Server** | Any always-on machine with Docker | Raspberry Pi 4/5, NAS, mini PC or home server (`amd64` or `arm64`), in the same network as the robot. |
 | **Computer + USB cable** | One-time robot setup | To point the robot at your server with the Vacuula installer. |
 | **Phone** (optional) | Android 8.0 or newer | The web app works in any browser too. |

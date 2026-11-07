@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, History, Map as MapIcon, MousePointer2, Pencil, Pentagon, Plus, Route, Shapes, Sparkles, Spline, Square, Trash2, Undo2, X } from 'lucide-react'
-import { api, gen3 } from '../api/client'
+import { api } from '../api/client'
+import { isGen4, robot } from '../api/robot'
+import { isCleaning } from '../status'
 import type { Boundary, ZoneQueue } from '../api/types'
 import { fill, useI18n } from '../i18n'
 import { useStore } from '../state/store'
@@ -309,17 +311,22 @@ export function MapPage() {
 
     /** Änderung auf die aktuelle Liste vom Roboter anwenden: eine veraltete oder leere Ansicht überschreibt nie andere Zonen */
     const save = async (change: (list: Boundary[]) => Boundary[], done = t.zones.saved): Promise<boolean> => {
+        // Gen4 bekommt die Zonen mit der ganzen Karte: nicht während einer Reinigung
+        if (isGen4(s.serial) && map?.enabled && isCleaning(s.robot)) {
+            setToast(t.zones.busySave)
+            return false
+        }
         setBusy('save')
         try {
-            const fresh = (await gen3.getMapBoundaries(s.serial!, current!)).data?.boundaries
+            const fresh = await robot.getBoundaries(s.serial!, current!)
             if (!Array.isArray(fresh)) throw new Error('boundaries not loaded')
             const list = change(fresh)
-            const res = await gen3.setMapBoundaries(s.serial!, current!, list.map((b) => b.type === 'polygon'
+            const res = await robot.setBoundaries(s.serial!, current!, list.map((b) => b.type === 'polygon'
                 ? { ...b, relevancy: interiorPoint(b.vertices) }
-                : { id: b.id, type: b.type, name: b.name, color: b.color, enabled: b.enabled ?? true, vertices: b.vertices }))
+                : { id: b.id, type: b.type, name: b.name, color: b.color, enabled: b.enabled ?? true, vertices: b.vertices, function: b.function }), !!map?.enabled)
             // Reksio bestätigt setMapBoundaries nur mit einer leeren Antwort: nachlesen, ob alles angekommen ist
             if ((res as { emptyReply?: boolean } | undefined)?.emptyReply) {
-                const now = (await gen3.getMapBoundaries(s.serial!, current!)).data.boundaries ?? []
+                const now = await robot.getBoundaries(s.serial!, current!)
                 const key = (bs: Boundary[]) => bs.map((b) => `${b.id}|${b.name}|${b.vertices.length}`).sort().join()
                 if (key(now) !== key(list)) throw new Error('boundaries not applied')
             }
@@ -357,8 +364,8 @@ export function MapPage() {
         setBusy('clean')
         try {
             const p = getPrefs()
-            const q = await api.cleanZones(s.serial!, current!, selected.map((id) => ({ id, name: all.find((b) => b.id === id)?.name ?? '' })), p.mode, p.navigation)
-            s.setZoneQueue(q)
+            const q = await robot.cleanZones(s.serial!, current!, selected.map((id) => ({ id, name: all.find((b) => b.id === id)?.name ?? '' })), p.mode, p.navigation)
+            if (q) s.setZoneQueue(q)
             setSelected([])
             await s.refreshRobot()
         } catch {
@@ -670,10 +677,11 @@ export function MapPage() {
     const zonesEmpty = bounds.error
         ? <Empty icon={<Shapes />} label={t.zones.loadFailed}
             action={<Button size="s" label={t.common.retry} onClick={() => setVersion((v) => v + 1)} />} />
-        : <Empty icon={<Shapes />} label={bounds.loading || !bounds.data ? t.common.loading : t.zones.none} />
+        : <Empty icon={<Shapes />} label={!current ? t.map.noMap : bounds.loading || !bounds.data ? t.common.loading : t.zones.none} />
 
     const shown = tab === 'edit' && draft ? all.filter((b) => b.id !== draft.b.id) : all
-    const canStart = s.connected && !!s.robot?.availableCommands?.start
+    // Gen4 kennt die Zonen nur auf der verwendeten Karte
+    const canStart = s.connected && !!s.robot?.availableCommands?.start && (!isGen4(s.serial) || !!map?.enabled)
     const rowHover = (id: string) => ({ onMouseEnter: () => setHoverId(id), onMouseLeave: () => setHoverId(undefined) })
 
     const toolButtons: [Tool, typeof Square, string][] = [
@@ -783,7 +791,7 @@ export function MapPage() {
                             </ul>
                         ) : zonesEmpty}
                         <div className="actions zpanel-foot">
-                            <Button variant="ghost" icon={<History />} label={t.zones.history} disabled={!current} onClick={() => setShowHistory(true)} />
+                            {!isGen4(s.serial) && <Button variant="ghost" icon={<History />} label={t.zones.history} disabled={!current} onClick={() => setShowHistory(true)} />}
                             <Button icon={<Route />} label={t.zones.newLine} disabled={!s.connected || !data.data || !bounds.data} onClick={() => create('polyline')} />
                             <Button icon={<Plus />} label={t.zones.newZone} disabled={!s.connected || !data.data || !bounds.data} onClick={() => create('polygon')} />
                         </div>
