@@ -9,7 +9,7 @@
 - **Gen4 settings**: clean with map only, robot language (Settings → Robot).
 - **Background tabs**: live event streams close 30 s after a tab is hidden and reopen with fresh data when it is shown again (browsers allow only six HTTP/1.1 connections per host, so three open tabs blocked every further request).
 - **History updates by itself**: a finished cleaning, and returning to a hidden tab, refresh the run list in the overview and the history without reloading the page.
-- **Android notification without ESP**: the permanent notification showed "Nicht erreichbar" whenever no ESP telemetry came in (always for Gen4, and for Gen3 while the ESP is off). It now lists the connected robots from the server with their last state (e.g. "D9: Unterwegs"); "Nicht erreichbar" only when no robot is connected.
+- **Android: no permanent status notification**: the watcher's service notification is posted once ("Meldungen aktiv", silent) and never updated, so it stays away once swiped off (Android 14+) or when the "Wächter" channel is turned off; the watcher keeps running and still sends the run and error notifications. A missing login is reported once as a normal notification.
 
 ## 0.2.0
 

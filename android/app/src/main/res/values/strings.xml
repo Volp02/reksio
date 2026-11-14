@@ -2,6 +2,7 @@
     <string name="app_name">Reksio</string>
     <string name="stop">Beenden</string>
     <string name="kanal_dauer">Wächter</string>
+    <string name="dauer_text">Meldungen aktiv</string>
     <string name="kanal_info">Ablauf</string>
     <string name="kanal_warnung">Fehler und Störungen</string>
     <string name="setup_titel">Reksio-Server</string>

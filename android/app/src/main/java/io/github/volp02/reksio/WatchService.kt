@@ -37,9 +37,6 @@ class WatchService : Service() {
     private var serverDa = false
     private var zonen = false
     private var anmeldung = false
-    /** Roboterliste des Servers (Seriennummer → Name, verbunden, Typ) und letzter Gen4-Zustand je Roboter */
-    private var roboter: Map<String, JSONObject> = emptyMap()
-    private val gen4Zustand = mutableMapOf<String, String>()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -55,7 +52,7 @@ class WatchService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        val n = dauerNotification("Verbinde …")
+        val n = dauerNotification()
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(ID_DAUER, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
@@ -127,17 +124,7 @@ class WatchService : Service() {
                 aktualisieren()
             }
             "zones" -> zonen = j.optJSONObject("queue") != null
-            "robots" -> {
-                roboter = j.keys().asSequence().mapNotNull { k -> j.optJSONObject(k)?.let { k to it } }.toMap()
-                // getrennt: alter Zustand gilt nicht mehr
-                gen4Zustand.keys.retainAll { roboter[it]?.optBoolean("connected") == true }
-                aktualisieren()
-            }
             "notice" -> {
-                Watcher.gen4Zustand(j.optString("type"), j.optString("code"))?.let {
-                    gen4Zustand[j.optString("serial")] = it
-                    aktualisieren()
-                }
                 val fehlend = j.optJSONArray("failed")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
                 Watcher.hinweis(j.optString("type"), fehlend, j.optString("code"), j.optString("name"))?.let { melden(nm, it) }
             }
@@ -172,15 +159,14 @@ class WatchService : Service() {
         handler.postDelayed(::pruefen, INTERVALL_MS)
     }
 
+    /**
+     * Die Dienst-Benachrichtigung wird nur beim Start gezeigt und nie aktualisiert: so bleibt sie weggewischt
+     * (Android 14+) bzw. unsichtbar, wenn der Kanal „Wächter“ aus ist. Nur eine fehlende Anmeldung wird einmal gemeldet.
+     */
+    private var anmeldungGemeldet = false
     private fun aktualisieren() {
-        val text = when {
-            anmeldung -> "Anmeldung nötig, App öffnen"
-            !serverDa -> "Server nicht erreichbar"
-            else -> Watcher.zusammenfassung(status, roboter.map { (serial, r) ->
-                Roboter(r.optString("name").ifBlank { serial }, r.optBoolean("connected"), gen4Zustand[serial])
-            })
-        }
-        getSystemService(NotificationManager::class.java).notify(ID_DAUER, dauerNotification(text))
+        if (anmeldung && !anmeldungGemeldet) melden(getSystemService(NotificationManager::class.java), Meldung("Anmeldung nötig, App öffnen", Level.WARNUNG))
+        anmeldungGemeldet = anmeldung
     }
 
     private fun melden(nm: NotificationManager, m: Meldung) {
@@ -195,7 +181,7 @@ class WatchService : Service() {
         nm.notify(naechsteId++, n)
     }
 
-    private fun dauerNotification(text: String): Notification {
+    private fun dauerNotification(): Notification {
         val stop = PendingIntent.getService(
             this, 1, Intent(this, WatchService::class.java).setAction(AKTION_STOP),
             PendingIntent.FLAG_IMMUTABLE,
@@ -203,9 +189,8 @@ class WatchService : Service() {
         return Notification.Builder(this, KANAL_DAUER)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText(text)
+            .setContentText(getString(R.string.dauer_text))
             .setContentIntent(appOeffnen())
-            .setOngoing(true)
             .setOnlyAlertOnce(true)
             .addAction(Notification.Action.Builder(null, getString(R.string.stop), stop).build())
             .build()
