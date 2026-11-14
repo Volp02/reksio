@@ -7,6 +7,8 @@
 - **Gen4 no-go areas**: besides no-go lines, areas the robot leaves out (Map → Edit → No-go area, or switch a zone's type).
 - **Gen4 notifications**: the server turns the robot's own events into notices (started, paused, charging and resuming, returning, finished, errors, offline during a run); the Android app shows them with the robot's name. Error and alert codes have readable texts in the web app.
 - **Gen4 settings**: clean with map only, robot language (Settings → Robot).
+- **Background tabs**: live event streams close 30 s after a tab is hidden and reopen with fresh data when it is shown again (browsers allow only six HTTP/1.1 connections per host, so three open tabs blocked every further request).
+- **History updates by itself**: a finished cleaning, and returning to a hidden tab, refresh the run list in the overview and the history without reloading the page.
 
 ## 0.2.0
 

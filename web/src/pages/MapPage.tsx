@@ -204,7 +204,7 @@ export function MapPage() {
     }, [bounds.error])
     // „zuletzt gereinigt“ neu berechnen, sobald sich der Zustand von Reksio ändert (z. B. Zone fertig)
     const [histVersion, setHistVersion] = useState(0)
-    useEffect(() => { setHistVersion((v) => v + 1) }, [s.robot?.state])
+    useEffect(() => { setHistVersion((v) => v + 1) }, [s.robot?.state, s.resumed])
     const zoneHist = useZoneHistory(s.serial, current, histVersion)
     const [showHistory, setShowHistory] = useState(false)
     useEffect(() => { setShowHistory(false) }, [current, tab])

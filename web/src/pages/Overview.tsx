@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
     BatteryCharging, Shapes, Trash2, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, History, House, Map as MapIcon, Pause, Play, Square, TriangleAlert,
 } from 'lucide-react'
@@ -199,9 +199,13 @@ function MapCard() {
 function RunsCard() {
     const { t, locale } = useI18n()
     const s = useStore()
-    const runs = useRuns(s.serial)
+    // Verlauf bei neuer Reinigung oder nach Hintergrund-Pause aktualisieren
+    const [noticeVer, setNoticeVer] = useState(0)
+    useEffect(() => { if (/^(zones_|plan_|robot_finished)/.test(s.notice?.type ?? '')) setNoticeVer((v) => v + 1) }, [s.notice])
+    const version = noticeVer + s.resumed
+    const runs = useRuns(s.serial, version)
     const maps = useMaps(s.serial)
-    const sessions = useEspSessions(s.serial)
+    const sessions = useEspSessions(s.serial, version)
     const list = sortRuns(runs.data).slice(0, 3)
     const mapName = (id: string | null) => maps.data?.find((m) => m.id === id)?.name
     return (

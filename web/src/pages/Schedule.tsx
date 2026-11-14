@@ -45,7 +45,7 @@ export function Schedule() {
         if (!s.serial) return
         setError(false)
         api.plans(s.serial).then(setPlans).catch(() => setError(true))
-    }, [s.serial, version, s.plansAt])
+    }, [s.serial, version, s.plansAt, s.resumed])
 
     // eigener Zeitplan des Roboters: nur zeigen, wenn dort Termine liegen (sonst starten beide)
     useEffect(() => {

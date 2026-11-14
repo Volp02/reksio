@@ -34,13 +34,14 @@ function PathMap({ data, run, poses, label, boundaries }: { data: MapData; run?:
 export function Runs({ selected }: { selected?: string }) {
     const { t, locale } = useI18n()
     const s = useStore()
-    // Zonenfolge oder Zeitplan fertig: Verlauf neu laden
-    const [version, setVersion] = useState(0)
-    useEffect(() => { if (/^(zones_|plan_)/.test(s.notice?.type ?? '')) setVersion((v) => v + 1) }, [s.notice])
+    // Zonenfolge, Zeitplan oder Reinigung fertig / nach Pause wieder sichtbar: Verlauf neu laden
+    const [noticeVer, setNoticeVer] = useState(0)
+    useEffect(() => { if (/^(zones_|plan_|robot_finished)/.test(s.notice?.type ?? '')) setNoticeVer((v) => v + 1) }, [s.notice])
+    const version = noticeVer + s.resumed
     const runs = useRuns(s.serial, version)
     const jobs = useJobs(s.serial, version)
     const maps = useMaps(s.serial)
-    const sessions = useEspSessions(s.serial)
+    const sessions = useEspSessions(s.serial, version)
     const entries = useMemo(() => historyEntries(runs.data ?? [], jobs.data ?? []), [runs.data, jobs.data])
     const current = selected ?? entries[0]?.id
     const group = entries.find((e): e is Extract<Entry, { kind: 'job' }> => e.kind === 'job'

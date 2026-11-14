@@ -6,6 +6,7 @@ import type { LidarScan, Pose, Robots, RobotStateData, ServerInfo, Telemetry, Zo
 const HISTORY_S = 3 * 3600
 const LIDAR_RENEW_MS = 5000 // Server liest Scans 15 s pro Anfrage
 const LIDAR_OFF_AFTER_S = 60 // so lange keine Position mehr: Fahrt vorbei, LIDAR aus
+const HIDE_GRACE_MS = 30_000 // SSE-Verbindungen nach 30 s im Hintergrund schließen (HTTP/1.1-Limit)
 
 export interface Store {
     server?: ServerInfo
@@ -34,6 +35,8 @@ export interface Store {
     lidar?: LidarScan
     /** Zeitpunkt der letzten Änderung am Zeitplan des Servers (neu laden) */
     plansAt: number
+    /** Zähler, wenn der Tab nach einer Hintergrund-Pause wieder sichtbar wird */
+    resumed: number
     /** Sekundentakt für Frische-Anzeigen */
     now: number
     refresh: () => void
@@ -70,6 +73,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const [lidar, setLidar] = useState<LidarScan>()
     const [now, setNow] = useState(() => Date.now() / 1000)
     const [reload, setReload] = useState(0)
+    const [paused, setPaused] = useState(false)
+    const [resumed, setResumed] = useState(0)
 
     // gewählter Roboter; sonst der erste verbundene, sonst der erste
     const [chosen, setChosen] = useState(() => localStorage.getItem(ROBOT_KEY) ?? undefined)
@@ -96,14 +101,54 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return () => clearInterval(id)
     }, [])
 
+    // SSE-Verbindungen im Hintergrund nach Schonfrist schließen (HTTP/1.1 erlaubt nur 6 pro Host)
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        let hiddenAt: number | undefined
+        let disconnected = false
+
+        const onVisibility = () => {
+            if (document.visibilityState === 'hidden') {
+                hiddenAt ??= Date.now()
+                if (!disconnected && timer === undefined) {
+                    timer = setTimeout(() => {
+                        timer = undefined
+                        disconnected = true
+                        setPaused(true)
+                    }, HIDE_GRACE_MS)
+                }
+            } else {
+                if (timer !== undefined) {
+                    clearTimeout(timer)
+                    timer = undefined
+                }
+                const elapsed = hiddenAt !== undefined ? Date.now() - hiddenAt : 0
+                hiddenAt = undefined
+                if (disconnected || elapsed >= HIDE_GRACE_MS) {
+                    disconnected = false
+                    setPaused(false)
+                    setResumed((n) => n + 1)
+                }
+            }
+        }
+
+        onVisibility()
+        document.addEventListener('visibilitychange', onVisibility)
+        return () => {
+            if (timer !== undefined) clearTimeout(timer)
+            document.removeEventListener('visibilitychange', onVisibility)
+        }
+    }, [])
+
     useEffect(() => {
         setServerError(false)
         api.server().then(setServer).catch(() => setServerError(true))
         api.robots().then(setRobots).catch(() => setServerError(true))
-    }, [reload])
+    }, [reload, resumed])
 
     // serverweite Ereignisse: Roboterliste, ESP-Telemetrie, Position
     useEffect(() => {
+        if (paused) return
         const es = new EventSource(`${API}/events`)
         es.addEventListener('robots', (e) => setRobots(JSON.parse((e as MessageEvent).data)))
         es.addEventListener('telemetry', (e) => {
@@ -142,7 +187,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
         es.onopen = () => setServerError(false)
         return () => es.close()
-    }, [reload])
+    }, [reload, paused, resumed])
 
     const refreshRobot = useCallback(async () => {
         const s = serialRef.current
@@ -159,7 +204,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     // Robot-Zustand: einmal holen, danach Ereignisse des Roboters
     useEffect(() => {
-        if (!serial || !connected) return
+        if (paused || !serial || !connected) return
         refreshRobot()
         const es = new EventSource(`${API}/robot/${serial}/connect`)
         es.onopen = () => refreshRobot()
@@ -175,7 +220,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             }
         }
         return () => es.close()
-    }, [serial, connected, refreshRobot, reload])
+    }, [serial, connected, refreshRobot, reload, paused, resumed])
 
     // ESP: letzter Stand und Verlauf für die Akkukurve
     useEffect(() => {
@@ -187,7 +232,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setPoses(ps)
             if (ps.length) setPose(ps[ps.length - 1])
         }).catch(() => undefined)
-    }, [serial, reload])
+    }, [serial, reload, resumed])
 
     // LIDAR nur, solange jemand zusieht: Anfrage erneuern, solange an und die Seite sichtbar ist
     useEffect(() => {
@@ -205,7 +250,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const value: Store = {
         server, serverError, robots, serial, select,
         name: (serial && robots?.[serial]?.name) || 'Reksio',
-        connected, robot, robotAt, telemetry, history, pose, poses, notice, zoneQueue, plansAt, now,
+        connected, robot, robotAt, telemetry, history, pose, poses, notice, zoneQueue, plansAt, resumed, now,
         lidarOn, setLidarOn, lidar: lidarOn ? lidar : undefined,
         refresh: () => setReload((n) => n + 1),
         setZoneQueue,
