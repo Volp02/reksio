@@ -15,6 +15,9 @@ enum class Level { INFO, WARNUNG }
 
 data class Meldung(val text: String, val level: Level)
 
+/** Roboter aus der Liste des Servers (`robots`-Ereignis); `zustand` = letzter Hinweis (`robot_*`) von Gen4. */
+data class Roboter(val name: String, val verbunden: Boolean, val zustand: String? = null)
+
 /**
  * Entscheidet aus aufeinanderfolgenden Statusabfragen, wann sich eine Meldung lohnt.
  * Reine Logik ohne Android, damit sie per Unit-Test prüfbar ist.
@@ -204,6 +207,17 @@ class Watcher(private val offlineGrenzeMs: Long = 5 * 60_000L) {
             return if (name.isBlank()) m else m.copy(text = "$name: ${m.text}")
         }
 
+        /** Zustand eines Gen4-Roboters nach seinem letzten Hinweis, für die dauerhafte Benachrichtigung. */
+        fun gen4Zustand(typ: String, code: String = ""): String? = when (typ) {
+            "robot_started", "robot_resumed" -> "Unterwegs"
+            "robot_finished" -> "Bereit"
+            "robot_paused" -> "Pausiert"
+            "robot_returning" -> "Fährt zur Station"
+            "robot_charging_resume" -> "Lädt, macht danach weiter"
+            "robot_error" -> gen4Text(code)
+            else -> null
+        }
+
         private fun roboter(typ: String, code: String): Meldung? = when (typ) {
             "robot_started" -> Meldung("Gestartet", Level.INFO)
             "robot_finished" -> Meldung("Fertig", Level.INFO)
@@ -227,9 +241,16 @@ class Watcher(private val offlineGrenzeMs: Long = 5 * 60_000L) {
             else -> null
         }
 
-        /** Kurztext für die dauerhafte Benachrichtigung. */
-        fun zusammenfassung(s: Status?): String {
-            if (s == null) return "Nicht erreichbar"
+        /**
+         * Kurztext für die dauerhafte Benachrichtigung. Ohne ESP-Telemetrie (Gen4 hat keinen ESP, oder der ESP ist aus)
+         * zählen die verbundenen Roboter aus der Liste des Servers; „Nicht erreichbar“ nur, wenn keiner verbunden ist.
+         */
+        fun zusammenfassung(s: Status?, roboter: List<Roboter> = emptyList()): String {
+            if (s == null) {
+                val da = roboter.filter { it.verbunden }
+                if (da.isEmpty()) return "Nicht erreichbar"
+                return da.joinToString(" · ") { "${it.name}: ${it.zustand ?: "verbunden"}" }
+            }
             val ui = s.uiState
             val text = when {
                 fehlerText(s) != null -> fehlerText(s)!!

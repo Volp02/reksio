@@ -37,6 +37,9 @@ class WatchService : Service() {
     private var serverDa = false
     private var zonen = false
     private var anmeldung = false
+    /** Roboterliste des Servers (Seriennummer → Name, verbunden, Typ) und letzter Gen4-Zustand je Roboter */
+    private var roboter: Map<String, JSONObject> = emptyMap()
+    private val gen4Zustand = mutableMapOf<String, String>()
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -124,7 +127,17 @@ class WatchService : Service() {
                 aktualisieren()
             }
             "zones" -> zonen = j.optJSONObject("queue") != null
+            "robots" -> {
+                roboter = j.keys().asSequence().mapNotNull { k -> j.optJSONObject(k)?.let { k to it } }.toMap()
+                // getrennt: alter Zustand gilt nicht mehr
+                gen4Zustand.keys.retainAll { roboter[it]?.optBoolean("connected") == true }
+                aktualisieren()
+            }
             "notice" -> {
+                Watcher.gen4Zustand(j.optString("type"), j.optString("code"))?.let {
+                    gen4Zustand[j.optString("serial")] = it
+                    aktualisieren()
+                }
                 val fehlend = j.optJSONArray("failed")?.let { a -> (0 until a.length()).map { a.optString(it) } }.orEmpty()
                 Watcher.hinweis(j.optString("type"), fehlend, j.optString("code"), j.optString("name"))?.let { melden(nm, it) }
             }
@@ -163,7 +176,9 @@ class WatchService : Service() {
         val text = when {
             anmeldung -> "Anmeldung nötig, App öffnen"
             !serverDa -> "Server nicht erreichbar"
-            else -> Watcher.zusammenfassung(status)
+            else -> Watcher.zusammenfassung(status, roboter.map { (serial, r) ->
+                Roboter(r.optString("name").ifBlank { serial }, r.optBoolean("connected"), gen4Zustand[serial])
+            })
         }
         getSystemService(NotificationManager::class.java).notify(ID_DAUER, dauerNotification(text))
     }

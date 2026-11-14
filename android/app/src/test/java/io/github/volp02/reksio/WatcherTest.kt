@@ -83,4 +83,14 @@ class WatcherTest {
         assertEquals("Neuer code", Watcher.hinweis("robot_error", code = "neuer_code")?.text)
         assertEquals("Zonen fertig", Watcher.hinweis("zones_done", name = "D8")?.text)
     }
+
+    @Test
+    fun ohneTelemetrieZaehlenVerbundeneRoboter() {
+        assertEquals("Nicht erreichbar", Watcher.zusammenfassung(null))
+        assertEquals("Nicht erreichbar", Watcher.zusammenfassung(null, listOf(Roboter("Reksio", verbunden = false))))
+        assertEquals("D9: verbunden", Watcher.zusammenfassung(null, listOf(Roboter("Reksio", false), Roboter("D9", true))))
+        assertEquals("D9: Unterwegs", Watcher.zusammenfassung(null, listOf(Roboter("D9", true, Watcher.gen4Zustand("robot_started")))))
+        assertEquals("Bereit", Watcher.gen4Zustand("robot_finished"))
+        assertEquals(null, Watcher.gen4Zustand("robot_offline"))
+    }
 }
