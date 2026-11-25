@@ -231,9 +231,21 @@ def get_run(req: RouterHandler, serial: str, run_id: str) -> None:
     req.send_ok(data)
 
 
+def restore_floorplan(req: RouterHandler, serial: str, map_id: str) -> None:
+    """PUT /robot/<serial>/maps/<map_id> - restore floorplan"""
+    # if floormap is still on robot, we can restore it back to the maps list!
+    if '-' not in serial:
+        req.send_bad_request()
+        return
 
+    with get_session() as session:
+        pmap = session.get(PersistentMap, map_id)
+        if pmap is None or pmap.robot != serial:
+            return req.send_not_found("Map not found")
+        pmap.in_maps_list = True
+        session.commit()
 
-
+    req.send_ok()
 
 def connect_robot(req: RouterHandler, serial: str) -> None:
     """GET /robots/{serial}/connect - SSE stream for client"""

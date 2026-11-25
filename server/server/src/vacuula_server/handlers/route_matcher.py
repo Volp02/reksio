@@ -6,7 +6,7 @@ import re
 from typing import Callable, Optional, Tuple, List
 
 # general
-from .app import get_robots, get_maps, get_map, get_run, post_map, delete_map, post_robot, get_runs, connect_robot, post_robot_command, get_server_info
+from .app import get_robots, get_maps, get_map, get_run, post_map, delete_map, restore_floorplan, post_robot, get_runs, connect_robot, post_robot_command, get_server_info
 from .events import get_events
 from .telemetry import get_telemetry, get_telemetry_latest, get_poses, post_lidar
 from .app_download import get_apk
@@ -83,6 +83,7 @@ APP_ROUTES: List[Tuple[str, str, Handler]] = [
     ("POST", r"/api/robot/(.+)/maps/(.+)/unuse", gen4.post_update_floorplan_in_unuse),
     ("POST", r"/api/robot/(.+)/maps/(.+)", post_map),
     ("DELETE", r"/api/robot/(.+)/maps/(.+)", delete_map),
+    ("PUT", r"/api/robot/(.+)/maps/(.+)", restore_floorplan),
     ("GET", r"/api/robot/([^/]+)/jobs", get_jobs),
     ("GET", r"/api/robot/([^/]+)/incidents", get_incidents),
     ("GET", r"/api/robot/([^/]+)/plans", get_plans),
@@ -92,7 +93,6 @@ APP_ROUTES: List[Tuple[str, str, Handler]] = [
     ("DELETE", r"/api/robot/(.+)/zones", delete_zones),
     ("POST", r"/api/robot/(.+)/command", post_robot_command),
     ("POST", r"/api/robot/(.+)", post_robot),
-    ("DELETE", r"/api/robot/(.+)/maps/(.+)", gen4.delete_demote_floorplan),
 ]
 
 S3_ROUTES: List[Tuple[str, str, Handler]] = [
