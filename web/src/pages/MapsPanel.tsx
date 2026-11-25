@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Compass, Plus, Trash2, X } from 'lucide-react'
+import { Check, Compass, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { api, gen3 } from '../api/client'
 import { robot } from '../api/robot'
 import { runTs, sortRuns, useRuns } from '../state/data'
@@ -22,11 +22,17 @@ export function MapsPanel({ maps, current, onChoose, onChanged, onToast }: {
     const { t, locale } = useI18n()
     const s = useStore()
     const [draft, setDraft] = useState<Draft>()
-    const [busy, setBusy] = useState<'save' | 'delete' | 'explore' | 'add'>()
+    const [busy, setBusy] = useState<'save' | 'delete' | 'explore' | 'add' | 'restore'>()
+    const [restoring, setRestoring] = useState<string>()
+    // Gen3: vom Roboter nicht mehr gekannte Karten nicht erneut anbieten
+    const [gone, setGone] = useState<ReadonlySet<string>>(new Set())
     // Gen4: jede Reinigung bringt eine Bodenkarte mit, die sich übernehmen lässt
     const explorable = robot.canExplore(s.serial)
-    const runs = useRuns(explorable ? undefined : s.serial)
-    const candidates = sortRuns(runs.data).filter((r) => !maps.some((m) => m.id === r.id)).slice(0, 5)
+    const runs = useRuns(s.serial)
+    const unlisted = sortRuns(runs.data).filter((r) => !maps.some((m) => m.id === r.id))
+    const candidates = explorable ? [] : unlisted.slice(0, 5)
+    // Gen3: gelöschte Karten aus Erkundungsfahrten
+    const removed = explorable ? unlisted.filter((r) => r.run?.valid_as_persistent_map && !gone.has(r.id)).slice(0, 5) : []
     const [confirm, setConfirm] = useState<'delete' | 'explore'>()
 
     // gelöschte Karte: Bearbeitung schließen
@@ -105,6 +111,29 @@ export function MapsPanel({ maps, current, onChoose, onChanged, onToast }: {
         }
     }
 
+    /** Gen3: nur wiederherstellen, wenn der Roboter die Karte noch hat */
+    const restore = async (id: string) => {
+        if (!s.serial) return
+        setBusy('restore')
+        setRestoring(id)
+        try {
+            const res = await gen3.getMapBoundaries(s.serial, id)
+            if (res?.result !== 'ok') {
+                setGone((g) => new Set(g).add(id))
+                onToast(t.maps.gone)
+                return
+            }
+            await api.restoreMap(s.serial, id)
+            onChanged()
+            onToast(t.maps.restored)
+        } catch {
+            onToast(t.actions.failed)
+        } finally {
+            setBusy(undefined)
+            setRestoring(undefined)
+        }
+    }
+
     const docked = !!s.robot?.details?.isDocked
     const canExplore = s.connected && docked && !!s.robot?.availableCommands?.start
     const name = (m: PersistentMap) => (m.name && m.name !== '(unnamed)' ? m.name : t.maps.unnamed)
@@ -158,6 +187,27 @@ export function MapsPanel({ maps, current, onChoose, onChanged, onToast }: {
                                         {area ? <Label className="row-s">{`${fmtNumber(locale, area, 1)} m²`}</Label> : null}
                                     </span>
                                     <Button size="s" icon={<Plus />} label={t.maps.add} disabled={!!busy} loading={busy === 'add'} onClick={() => add(r.id)} />
+                                </div>
+                            </li>
+                        )
+                    })}
+                </ul>
+            </>)}
+            {removed.length > 0 && (<>
+                <Label className="zpanel-sub">{t.maps.removed}</Label>
+                <ul className="rows">
+                    {removed.map((r) => {
+                        const ts = runTs(r)
+                        const area = r.run?.cleaned_area
+                        return (
+                            <li key={r.id}>
+                                <div className="row zrow">
+                                    <span className="row-main">
+                                        <Label className="row-t">{ts ? fmtWhen(locale, s.server?.timezone, ts, s.now, t.overview, true) : r.id}</Label>
+                                        {area ? <Label className="row-s">{`${fmtNumber(locale, area, 1)} m²`}</Label> : null}
+                                    </span>
+                                    <Button size="s" icon={<RotateCcw />} label={t.maps.restore} disabled={!s.connected || !!busy}
+                                        loading={restoring === r.id} onClick={() => restore(r.id)} />
                                 </div>
                             </li>
                         )

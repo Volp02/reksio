@@ -164,6 +164,8 @@ export interface RunInfo {
     picked_up_count?: number; localization_lost?: boolean; teleported?: boolean
     time_in_error?: number; time_in_pause?: number
     suspended_cleaning_charging_count?: number; time_in_suspended_cleaning?: number
+    /** Gen3: Erkundungsfahrt, deren Karte der Roboter behalten hat */
+    valid_as_persistent_map?: boolean
 }
 export interface RunSummary { id: string; persistent_map: string | null; run?: RunInfo }
 

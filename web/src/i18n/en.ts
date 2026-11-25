@@ -430,6 +430,10 @@ const en: Shape<Dict> = {
         fromRun: 'Map from a cleaning run',
         add: 'Add',
         added: 'Map added',
+        removed: 'Deleted maps',
+        restore: 'Restore',
+        restored: 'Map restored',
+        gone: 'No longer on the robot',
     },
     zones: {
         clean: 'Clean',

@@ -429,6 +429,10 @@ const de = {
         fromRun: 'Karte aus einer Reinigung',
         add: 'Übernehmen',
         added: 'Karte übernommen',
+        removed: 'Gelöschte Karten',
+        restore: 'Wiederherstellen',
+        restored: 'Karte wiederhergestellt',
+        gone: 'Nicht mehr auf dem Roboter',
     },
     zones: {
         clean: 'Reinigen',

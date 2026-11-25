@@ -81,6 +81,8 @@ export const api = {
     updateMap: (serial: string, id: string, name: string, enabled: boolean) =>
         request<void>('POST', `/robot/${serial}/maps/${id}`, { name, enabled }),
     deleteMap: (serial: string, id: string) => request<void>('DELETE', `/robot/${serial}/maps/${id}`),
+    /** Gen3: gelöschte Karte wieder in die Liste nehmen */
+    restoreMap: (serial: string, id: string) => request<void>('PUT', `/robot/${serial}/maps/${id}`),
     /** gesicherte Stände der Zonen/Linien einer Karte, neueste zuerst (der Server sichert vorher den aktuellen) */
     boundaryBackups: (serial: string, mapId: string) => request<BoundaryBackup[]>('GET', `/robot/${serial}/maps/${mapId}/backups`),
     /** pro Zone: zuletzt gereinigt (Unix-Zeit) und Anzahl Fahrten, aus den Positionen des ESP */
@@ -142,7 +144,7 @@ export const gen3 = {
     /** Erkundungsfahrt für eine neue Karte, nur aus der Basis */
     explore: (s: string) => api.command(s, 'startPersistentMapExploration'),
     getMapBoundaries: (s: string, mapId: string) =>
-        api.command<{ data: { boundaries?: Boundary[] } }>(s, 'getMapBoundaries', { mapId }),
+        api.command<{ result?: string; data: { boundaries?: Boundary[] } }>(s, 'getMapBoundaries', { mapId }),
     /** ersetzt alle Zonen und No-Go-Linien der Karte; Zonen brauchen `relevancy` (Punkt innerhalb) */
     setMapBoundaries: (s: string, mapId: string, boundaries: Boundary[]) =>
         api.command(s, 'setMapBoundaries', { mapId, boundaries }),
