@@ -38,4 +38,4 @@ COPY server/server/migrations ./migrations
 COPY --from=web /web/dist ./web
 ARG REKSIO_VERSION=
 ENV REKSIO_VERSION=$REKSIO_VERSION
-CMD ["sh", "-c", "alembic upgrade head && vacuula-server"]
+CMD ["sh", "-c", "alembic upgrade head && exec vacuula-server"]
