@@ -10,6 +10,8 @@
 - **Background tabs**: live event streams close 30 s after a tab is hidden and reopen with fresh data when it is shown again (browsers allow only six HTTP/1.1 connections per host, so three open tabs blocked every further request).
 - **History updates by itself**: a finished cleaning, and returning to a hidden tab, refresh the run list in the overview and the history without reloading the page.
 - **Android: no permanent status notification**: the watcher's service notification is posted once ("Meldungen aktiv", silent) and never updated, so it stays away once swiped off (Android 14+) or when the "Wächter" channel is turned off; the watcher keeps running and still sends the run and error notifications. A missing login is reported once as a normal notification.
+- **Vacuula 1.1.1**: server updated to upstream 1.1.1 (clean stop on SIGTERM/SIGINT, versions with `+build`). The image now starts the server with `exec`, so `docker stop` ends it right away instead of killing it after 10 s.
+- **Restore deleted Gen3 maps**: Map → Maps → Deleted maps lists maps from exploration runs that were removed from the list; Restore first asks the robot whether it still has the map, then puts it back (not in use until switched on).
 
 ## 0.2.0
 
